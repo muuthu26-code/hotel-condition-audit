@@ -290,18 +290,26 @@
       }
     }
 
+    const DEFAULT_FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCvuqr0DltPd2_FmGF2oUozB4d1SDg5W4U",
+      authDomain: "conditions-audit-app.firebaseapp.com",
+      projectId: "conditions-audit-app",
+      storageBucket: "conditions-audit-app.firebasestorage.app",
+      messagingSenderId: "392033902726",
+      appId: "1:392033902726:web:1f7b78f1208bb8fca1b107"
+    };
+
     function initFirebaseFromStorage() {
+      document.getElementById('firebaseConfigModal').classList.add('hidden');
       const savedConfig = localStorage.getItem('firebase_hotel_config');
       if (savedConfig) {
         try {
-          const config = JSON.parse(savedConfig);
-          document.getElementById('firebaseConfigModal').classList.add('hidden');
-          initFirebase(config);
+          initFirebase(JSON.parse(savedConfig));
         } catch (e) {
-          openConfigModal();
+          initFirebase(DEFAULT_FIREBASE_CONFIG);
         }
       } else {
-        openConfigModal();
+        initFirebase(DEFAULT_FIREBASE_CONFIG);
       }
     }
 
