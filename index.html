@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotel Condition Audit & Excel Generator (Firebase Sync)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- ExcelJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+  <!-- FileSaver.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white; color: black; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+  <!-- Firebase Configuration Modal -->
+  <div id="firebaseConfigModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+      <div class="flex items-center space-x-3 text-amber-600">
+        <i class="fa-solid fa-fire-flame-curved text-2xl"></i>
+        <h3 class="text-lg font-bold text-slate-900">Configure Firebase Live Sync</h3>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Paste your Firebase Web App configuration object below to enable real-time cross-device synchronization and cloud image storage.
+      </p>
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Firebase SDK Config (JSON / JS Object)</label>
+        <textarea id="firebaseConfigInput" rows="7" placeholder='{
+  "apiKey": "YOUR_API_KEY",
+  "authDomain": "YOUR_PROJECT.firebaseapp.com",
+  "projectId": "YOUR_PROJECT_ID",
+  "storageBucket": "YOUR_PROJECT.appspot.com",
+  "messagingSenderId": "YOUR_SENDER_ID",
+  "appId": "YOUR_APP_ID"
+}' class="w-full bg-slate-50 border border-slate-300 font-mono text-xs rounded-lg p-3 focus:ring-2 focus:ring-indigo-500"></textarea>
+      </div>
+      <div class="flex justify-between items-center pt-2">
+        <button onclick="skipFirebaseConfig()" class="text-xs text-slate-500 hover:text-slate-800 underline">Continue with Offline/Local Drafts</button>
+        <button onclick="saveFirebaseConfig()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2 rounded-lg shadow transition">
+          Connect Firebase & Sync
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Bar -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-600 p-2 rounded-lg">
+          <i class="fa-solid me-1 fa-hotel text-xl text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold leading-tight">Hotel Condition Audit Tool</h1>
+            <span id="syncStatusBadge" class="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] px-2 py-0.5 rounded-full flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+              <span>Offline Mode</span>
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Real-Time Multi-Device Audit & Excel Generator</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="openConfigModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-slate-700 transition flex items-center space-x-1">
+          <i class="fa-solid fa-gear"></i>
+          <span>Sync Settings</span>
+        </button>
+        <button onclick="clearForm()" class="bg-rose-900/40 hover:bg-rose-900/60 text-rose-300 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-rose-800/50 transition flex items-center space-x-1">
+          <i class="fa-solid fa-trash-can"></i>
+          <span>Reset</span>
+        </button>
+        <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm px-4 py-1.5 rounded-md shadow transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-file-excel"></i>
+          <span>Export Excel (.xlsx)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full space-y-6">
+
+    <!-- Audit Metadata Card -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+          <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
+          <span>Audit Metadata & General Details</span>
+        </h2>
+        <span class="text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full">Inspection Info</span>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Department *</label>
+          <select id="department" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="Front Office">Front Office</option>
+            <option value="Housekeeping">Housekeeping</option>
+            <option value="Food & Beverage Service">Food & Beverage Service</option>
+            <option value="Kitchen / Culinary">Kitchen / Culinary</option>
+            <option value="Engineering & Maintenance">Engineering & Maintenance</option>
+            <option value="Security & Loss Prevention">Security & Loss Prevention</option>
+            <option value="Spa & Recreation">Spa & Recreation</option>
+            <option value="Sales & Marketing">Sales & Marketing</option>
+            <option value="Human Resources & Training">Human Resources & Training</option>
+            <option value="Laundry & Linen">Laundry & Linen</option>
+            <option value="Hygiene & Food Safety">Hygiene & Food Safety</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Auditor Name *</label>
+          <input type="text" id="auditorName" onchange="syncMetaToCloud()" placeholder="e.g. John Doe (Training Manager)" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Audit Date & Time</label>
+          <input type="datetime-local" id="auditDate" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Overall Inspection Status</label>
+          <select id="overallStatus" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="Fully Compliant">🟢 Fully Compliant</option>
+            <option value="Minor Action Needed">🟡 Minor Action Needed</option>
+            <option value="Critical Attention Required">🔴 Critical Attention Required</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Statistics Bar -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Total Items</p>
+          <p id="statTotal" class="text-2xl font-bold text-slate-800">0</p>
+        </div>
+        <div class="bg-slate-100 p-3 rounded-lg text-slate-600">
+          <i class="fa-solid fa-list-check text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Passed / Compliant</p>
+          <p id="statPassed" class="text-2xl font-bold text-emerald-600">0</p>
+        </div>
+        <div class="bg-emerald-50 p-3 rounded-lg text-emerald-600">
+          <i class="fa-solid fa-circle-check text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Action Needed</p>
+          <p id="statAction" class="text-2xl font-bold text-amber-600">0</p>
+        </div>
+        <div class="bg-amber-50 p-3 rounded-lg text-amber-600">
+          <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Critical / Urgent</p>
+          <p id="statCritical" class="text-2xl font-bold text-rose-600">0</p>
+        </div>
+        <div class="bg-rose-50 p-3 rounded-lg text-rose-600">
+          <i class="fa-solid fa-radiation text-xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observations Section Header -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+            <i class="fa-solid fa-camera text-indigo-600"></i>
+            <span>Audit Condition Log & Observations</span>
+          </h2>
+          <p class="text-xs text-slate-500">Record specific area conditions, capture defect/rectified photos, and specify required actions.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center space-x-1 no-print">
+            <i class="fa-solid fa-print"></i>
+            <span>Print Preview</span>
+          </button>
+          <button onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs sm:text-sm px-4 py-2 rounded-lg shadow transition flex items-center space-x-1.5 no-print">
+            <i class="fa-solid fa-plus"></i>
+            <span>Add Observation</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Observations Container -->
+      <div id="observationsContainer" class="space-y-4">
+        <!-- Observations dynamically rendered here -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="text-center py-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+        <div class="bg-indigo-50 text-indigo-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i class="fa-solid fa-folder-open text-xl"></i>
+        </div>
+        <h3 class="text-sm font-semibold text-slate-700">No Observation Records Added Yet</h3>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Start your condition audit by adding an observation item for any department area.</p>
+        <button onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2 rounded-lg shadow transition inline-flex items-center space-x-1.5">
+          <i class="fa-solid fa-plus"></i>
+          <span>Add First Observation</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bg-slate-900 text-slate-400 text-xs py-4 text-center border-t border-slate-800 mt-auto no-print">
+    <p>Hotel Condition Audit Tool &bull; Multi-Device Firebase Live Sync & Excel Export Engine</p>
+  </footer>
+
+  <!-- Firebase & App Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+    let db = null;
+    let storage = null;
+    let isFirebaseActive = false;
+    let observations = [];
+    const AUDIT_DOC_ID = "active_hotel_audit";
+
+    // Set default datetime to now
+    window.addEventListener('DOMContentLoaded', () => {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      document.getElementById('auditDate').value = now.toISOString().slice(0, 16);
+      
+      initFirebaseFromStorage();
+    });
+
+    function updateSyncBadge(status, colorClass) {
+      const badge = document.getElementById('syncStatusBadge');
+      badge.innerHTML = `<span class="w-2 h-2 rounded-full ${colorClass}"></span><span>${status}</span>`;
+    }
+
+    function openConfigModal() {
+      document.getElementById('firebaseConfigModal').classList.remove('hidden');
+    }
+
+    function skipFirebaseConfig() {
+      document.getElementById('firebaseConfigModal').classList.add('hidden');
+      updateSyncBadge('Offline Mode (Local Draft)', 'bg-amber-400');
+      loadLocalDraft();
+    }
+
+    function saveFirebaseConfig() {
+      const val = document.getElementById('firebaseConfigInput').value.trim();
+      if (!val) {
+        alert('Please paste a valid Firebase configuration object.');
+        return;
+      }
+
+      try {
+        let configObj;
+        if (val.startsWith('{')) {
+          configObj = JSON.parse(val);
+        } else {
+          eval("configObj = " + val);
+        }
+
+        localStorage.setItem('firebase_hotel_config', JSON.stringify(configObj));
+        document.getElementById('firebaseConfigModal').classList.add('hidden');
+        initFirebase(configObj);
+      } catch (e) {
+        alert('Invalid Firebase configuration format. Please check the JSON syntax.');
+      }
+    }
+
+    function initFirebaseFromStorage() {
+      const savedConfig = localStorage.getItem('firebase_hotel_config');
+      if (savedConfig) {
+        try {
+          const config = JSON.parse(savedConfig);
+          document.getElementById('firebaseConfigModal').classList.add('hidden');
+          initFirebase(config);
+        } catch (e) {
+          openConfigModal();
+        }
+      } else {
+        openConfigModal();
+      }
+    }
+
+    function initFirebase(config) {
+      try {
+        const app = initializeApp(config);
+        db = getFirestore(app);
+        storage = getStorage(app);
+        isFirebaseActive = true;
+        updateSyncBadge('Live Firebase Sync', 'bg-emerald-400');
+
+        // Set up real-time listener across devices
+        onSnapshot(doc(db, "audits", AUDIT_DOC_ID), (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data.department) document.getElementById('department').value = data.department;
+            if (data.auditorName) document.getElementById('auditorName').value = data.auditorName;
+            if (data.auditDate) document.getElementById('auditDate').value = data.auditDate;
+            if (data.overallStatus) document.getElementById('overallStatus').value = data.overallStatus;
+            if (Array.isArray(data.observations)) {
+              observations = data.observations;
+              renderObservations();
+            }
+          }
+        }, (error) => {
+          console.error("Firestore listener error:", error);
+          updateSyncBadge('Sync Error (Local Fallback)', 'bg-rose-400');
+        });
+
+      } catch (e) {
+        console.error("Firebase init failed:", e);
+        updateSyncBadge('Offline Mode (Init Failed)', 'bg-amber-400');
+        loadLocalDraft();
+      }
+    }
+
+    async function syncToCloud() {
+      if (!isFirebaseActive || !db) {
+        saveLocalDraft();
+        return;
+      }
+
+      const auditData = {
+        department: document.getElementById('department').value,
+        auditorName: document.getElementById('auditorName').value,
+        auditDate: document.getElementById('auditDate').value,
+        overallStatus: document.getElementById('overallStatus').value,
+        observations: observations,
+        lastUpdated: new Date().toISOString()
+      };
+
+      try {
+        await setDoc(doc(db, "audits", AUDIT_DOC_ID), auditData, { merge: true });
+      } catch (e) {
+        console.error("Cloud sync failed, saving locally", e);
+        saveLocalDraft();
+      }
+    }
+
+    function saveLocalDraft() {
+      const data = {
+        department: document.getElementById('department').value,
+        auditorName: document.getElementById('auditorName').value,
+        auditDate: document.getElementById('auditDate').value,
+        overallStatus: document.getElementById('overallStatus').value,
+        observations: observations
+      };
+      localStorage.setItem('hotel_audit_draft', JSON.stringify(data));
+    }
+
+    function loadLocalDraft() {
+      const saved = localStorage.getItem('hotel_audit_draft');
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.department) document.getElementById('department').value = data.department;
+          if (data.auditorName) document.getElementById('auditorName').value = data.auditorName;
+          if (data.auditDate) document.getElementById('auditDate').value = data.auditDate;
+          if (data.overallStatus) document.getElementById('overallStatus').value = data.overallStatus;
+          if (Array.isArray(data.observations)) observations = data.observations;
+        } catch (e) {
+          console.error('Failed to parse local draft', e);
+        }
+      }
+      renderObservations();
+    }
+
+    function renderObservations() {
+      const container = document.getElementById('observationsContainer');
+      const emptyState = document.getElementById('emptyState');
+      container.innerHTML = '';
+
+      if (observations.length === 0) {
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      observations.forEach((obs, index) => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-50 rounded-xl p-4 border border-slate-200 relative transition hover:border-indigo-300";
+        card.innerHTML = `
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-200">
+            <div class="flex items-center space-x-2">
+              <span class="bg-slate-800 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">${index + 1}</span>
+              <select onchange="updateObservation(${index}, 'status', this.value)" class="bg-white border border-slate-300 text-slate-800 font-semibold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500">
+                <option value="Pass / Compliant" ${obs.status === 'Pass / Compliant' ? 'selected' : ''}>🟢 Pass / Compliant</option>
+                <option value="Action Required" ${obs.status === 'Action Required' ? 'selected' : ''}>🟡 Action Required</option>
+                <option value="Critical Defect" ${obs.status === 'Critical Defect' ? 'selected' : ''}>🔴 Critical Defect</option>
+                <option value="Pending Review" ${obs.status === 'Pending Review' ? 'selected' : ''}>🔵 Pending Review</option>
+              </select>
+            </div>
+            <button onclick="removeObservation(${index})" class="text-slate-400 hover:text-rose-600 transition self-end md:self-auto text-xs px-2 py-1 rounded no-print">
+              <i class="fa-solid fa-trash-can"></i> Remove
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Specific Location / Item</label>
+              <input type="text" value="${obs.location || ''}" onchange="updateObservation(${index}, 'location', this.value)" placeholder="e.g. Main Kitchen Cold Prep Area" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Category / Issue Type</label>
+              <select onchange="updateObservation(${index}, 'category', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                <option value="Cleanliness / Hygiene" ${obs.category === 'Cleanliness / Hygiene' ? 'selected' : ''}>Cleanliness / Hygiene</option>
+                <option value="Maintenance / Damage" ${obs.category === 'Maintenance / Damage' ? 'selected' : ''}>Maintenance / Damage</option>
+                <option value="Safety & Hazard" ${obs.category === 'Safety & Hazard' ? 'selected' : ''}>Safety & Hazard</option>
+                <option value="Standard Operating Procedure" ${obs.category === 'Standard Operating Procedure' ? 'selected' : ''}>Standard Operating Procedure</option>
+                <option value="Guest Impact Area" ${obs.category === 'Guest Impact Area' ? 'selected' : ''}>Guest Impact Area</option>
+                <option value="Equipment & Assets" ${obs.category === 'Equipment & Assets' ? 'selected' : ''}>Equipment & Assets</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Severity / Priority</label>
+              <select onchange="updateObservation(${index}, 'priority', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                <option value="Low Priority" ${obs.priority === 'Low Priority' ? 'selected' : ''}>Low Priority</option>
+                <option value="Medium / Follow-up" ${obs.priority === 'Medium / Follow-up' ? 'selected' : ''}>Medium / Follow-up</option>
+                <option value="High / Urgent" ${obs.priority === 'High / Urgent' ? 'selected' : ''}>High / Urgent</option>
+                <option value="Critical Hazard" ${obs.priority === 'Critical Hazard' ? 'selected' : ''}>Critical Hazard</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Target Completion Date</label>
+              <input type="date" value="${obs.targetDate || ''}" onchange="updateObservation(${index}, 'targetDate', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Defect Observation / Notes</label>
+              <textarea rows="2" onchange="updateObservation(${index}, 'notes', this.value)" placeholder="Describe the physical condition or fault..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.notes || ''}</textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Action Plan & Rectification Details</label>
+              <textarea rows="2" onchange="updateObservation(${index}, 'actionPlan', this.value)" placeholder="Specify required corrective action or rectified notes..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.actionPlan || ''}</textarea>
+            </div>
+          </div>
+
+          <!-- Dual Photo Section -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-slate-200">
+            <!-- Before Photo Slot -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-rose-700 uppercase flex items-center space-x-1">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  <span>Before / Defect Photo</span>
+                </span>
+                ${obs.beforeImage ? `<button onclick="removeImage(${index}, 'beforeImage')" class="text-[10px] text-rose-600 underline">Delete Photo</button>` : ''}
+              </div>
+              ${obs.beforeImage ? `
+                <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-28 bg-slate-100 flex items-center justify-center">
+                  <img src="${obs.beforeImage}" class="object-cover h-full w-full">
+                </div>
+              ` : `
+                <label class="flex flex-col items-center justify-center h-28 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-rose-50/30 transition">
+                  <i class="fa-solid fa-camera text-slate-400 text-lg mb-1"></i>
+                  <span class="text-[11px] text-slate-500 font-medium">Attach Defect Photo</span>
+                  <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${index}, 'beforeImage')" class="hidden">
+                </label>
+              `}
+            </div>
+
+            <!-- After Photo Slot -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-emerald-700 uppercase flex items-center space-x-1">
+                  <i class="fa-solid fa-circle-check"></i>
+                  <span>After / Rectified Photo</span>
+                </span>
+                ${obs.afterImage ? `<button onclick="removeImage(${index}, 'afterImage')" class="text-[10px] text-emerald-600 underline">Delete Photo</button>` : ''}
+              </div>
+              ${obs.afterImage ? `
+                <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-28 bg-slate-100 flex items-center justify-center">
+                  <img src="${obs.afterImage}" class="object-cover h-full w-full">
+                </div>
+              ` : `
+                <label class="flex flex-col items-center justify-center h-28 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-emerald-50/30 transition">
+                  <i class="fa-solid fa-camera text-slate-400 text-lg mb-1"></i>
+                  <span class="text-[11px] text-slate-500 font-medium">Attach Rectified Photo</span>
+                  <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${index}, 'afterImage')" class="hidden">
+                </label>
+              `}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      updateStats();
+    }
+
+    function addObservationItem() {
+      observations.push({
+        status: 'Action Required',
+        location: '',
+        category: 'Cleanliness / Hygiene',
+        priority: 'Medium / Follow-up',
+        targetDate: '',
+        notes: '',
+        actionPlan: '',
+        beforeImage: null,
+        afterImage: null
+      });
+      renderObservations();
+      syncToCloud();
+    }
+
+    function removeObservation(index) {
+      observations.splice(index, 1);
+      renderObservations();
+      syncToCloud();
+    }
+
+    function updateObservation(index, field, value) {
+      observations[index][field] = value;
+      updateStats();
+      syncToCloud();
+    }
+
+    async function handleImageUpload(event, index, field) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const base64Img = e.target.result;
+        
+        // Upload to Firebase Cloud Storage if connected
+        if (isFirebaseActive && storage) {
+          try {
+            const storageRef = ref(storage, `audit_images/${Date.now()}_${field}_${index}.jpg`);
+            await uploadString(storageRef, base64Img, 'data_url');
+            const downloadURL = await getDownloadURL(storageRef);
+            observations[index][field] = downloadURL;
+          } catch (err) {
+            console.warn("Storage upload failed, fallback to base64", err);
+            observations[index][field] = base64Img;
+          }
+        } else {
+          observations[index][field] = base64Img;
+        }
+
+        renderObservations();
+        syncToCloud();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeImage(index, field) {
+      observations[index][field] = null;
+      renderObservations();
+      syncToCloud();
+    }
+
+    function updateStats() {
+      document.getElementById('statTotal').innerText = observations.length;
+      document.getElementById('statPassed').innerText = observations.filter(o => o.status === 'Pass / Compliant').length;
+      document.getElementById('statAction').innerText = observations.filter(o => o.status === 'Action Required' || o.status === 'Pending Review').length;
+      document.getElementById('statCritical').innerText = observations.filter(o => o.status === 'Critical Defect').length;
+    }
+
+    function clearForm() {
+      if (confirm('Are you sure you want to clear the entire audit form across all devices?')) {
+        observations = [];
+        document.getElementById('auditorName').value = '';
+        renderObservations();
+        syncToCloud();
+      }
+    }
+
+    async function exportToExcel() {
+      if (observations.length === 0) {
+        alert('Please add at least one observation before exporting to Excel.');
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Hotel Condition Audit Tool';
+      workbook.created = new Date();
+
+      const dept = document.getElementById('department').value;
+      const auditor = document.getElementById('auditorName').value || 'Unassigned';
+      const auditDate = document.getElementById('auditDate').value;
+      const overallStatus = document.getElementById('overallStatus').value;
+
+      // 1. Executive Summary Sheet
+      const summarySheet = workbook.addWorksheet('Executive Summary');
+      summarySheet.views = [{ showGridLines: true }];
+
+      summarySheet.columns = [
+        { width: 25 },
+        { width: 35 }
+      ];
+
+      summarySheet.addRow(['HOTEL CONDITION AUDIT REPORT']).font = { bold: true, size: 16, color: { argb: '1E293B' } };
+      summarySheet.addRow([]);
+
+      summarySheet.addRow(['Department', dept]);
+      summarySheet.addRow(['Auditor Name', auditor]);
+      summarySheet.addRow(['Audit Date & Time', auditDate]);
+      summarySheet.addRow(['Overall Status', overallStatus]);
+      summarySheet.addRow([]);
+
+      summarySheet.addRow(['SUMMARY METRICS', 'COUNT']).font = { bold: true, size: 12 };
+      summarySheet.addRow(['Total Items Inspected', observations.length]);
+      summarySheet.addRow(['Passed / Compliant', observations.filter(o => o.status === 'Pass / Compliant').length]);
+      summarySheet.addRow(['Action Required', observations.filter(o => o.status === 'Action Required' || o.status === 'Pending Review').length]);
+      summarySheet.addRow(['Critical Defects', observations.filter(o => o.status === 'Critical Defect').length]);
+
+      // 2. Audit Log Sheet
+      const logSheet = workbook.addWorksheet('Condition Audit Log');
+      logSheet.views = [{ showGridLines: true }];
+
+      logSheet.columns = [
+        { header: '#', key: 'idx', width: 6 },
+        { header: 'Status', key: 'status', width: 20 },
+        { header: 'Location / Item', key: 'location', width: 25 },
+        { header: 'Category', key: 'category', width: 25 },
+        { header: 'Priority', key: 'priority', width: 18 },
+        { header: 'Defect Observation / Notes', key: 'notes', width: 35 },
+        { header: 'Before (Defect) Photo', key: 'beforeImg', width: 22 },
+        { header: 'Action Plan & Rectification', key: 'actionPlan', width: 35 },
+        { header: 'After (Rectified) Photo', key: 'afterImg', width: 22 },
+        { header: 'Target Date', key: 'targetDate', width: 15 }
+      ];
+
+      const headerRow = logSheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
+      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E293B' } };
+      headerRow.height = 25;
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      for (let i = 0; i < observations.length; i++) {
+        const obs = observations[i];
+        const rowNumber = i + 2;
+
+        const row = logSheet.addRow({
+          idx: i + 1,
+          status: obs.status,
+          location: obs.location || '-',
+          category: obs.category,
+          priority: obs.priority,
+          notes: obs.notes || '-',
+          beforeImg: '',
+          actionPlan: obs.actionPlan || '-',
+          afterImg: '',
+          targetDate: obs.targetDate || '-'
+        });
+
+        row.height = 80;
+        row.alignment = { vertical: 'middle', wrapText: true };
+
+        // Embed Before Image
+        if (obs.beforeImage) {
+          try {
+            let base64Data = obs.beforeImage;
+            if (obs.beforeImage.startsWith('http')) {
+              const res = await fetch(obs.beforeImage);
+              const blob = await res.blob();
+              base64Data = await new Promise((resolve) => {
+                const r = new FileReader();
+                r.onloadend = () => resolve(r.result);
+                r.readAsDataURL(blob);
+              });
+            }
+            const imageId = workbook.addImage({ base64: base64Data, extension: 'jpeg' });
+            logSheet.addImage(imageId, { tl: { col: 6, row: rowNumber - 1 }, ext: { width: 110, height: 95 } });
+          } catch (e) {
+            console.error('Failed to embed before image', e);
+          }
+        }
+
+        // Embed After Image
+        if (obs.afterImage) {
+          try {
+            let base64Data = obs.afterImage;
+            if (obs.afterImage.startsWith('http')) {
+              const res = await fetch(obs.afterImage);
+              const blob = await res.blob();
+              base64Data = await new Promise((resolve) => {
+                const r = new FileReader();
+                r.onloadend = () => resolve(r.result);
+                r.readAsDataURL(blob);
+              });
+            }
+            const imageId = workbook.addImage({ base64: base64Data, extension: 'jpeg' });
+            logSheet.addImage(imageId, { tl: { col: 8, row: rowNumber - 1 }, ext: { width: 110, height: 95 } });
+          } catch (e) {
+            console.error('Failed to embed after image', e);
+          }
+        }
+      }
+
+      const fileName = `Hotel_Condition_Audit_${dept.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`;
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), fileName);
+    }
+
+    // Attach global window handlers
+    window.openConfigModal = openConfigModal;
+    window.skipFirebaseConfig = skipFirebaseConfig;
+    window.saveFirebaseConfig = saveFirebaseConfig;
+    window.addObservationItem = addObservationItem;
+    window.removeObservation = removeObservation;
+    window.updateObservation = updateObservation;
+    window.handleImageUpload = handleImageUpload;
+    window.removeImage = removeImage;
+    window.clearForm = clearForm;
+    window.exportToExcel = exportToExcel;
+    window.syncMetaToCloud = syncToCloud;
+  </script>
+</body>
+</html>
