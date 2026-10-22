@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hotel Condition Audit & Excel Generator</title>
+  <title>Hotel Condition Audit Tool - Consolidated Multi-Department Report System</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome -->
@@ -39,8 +39,8 @@
             <i class="fa-solid fa-hotel text-lg sm:text-xl text-white"></i>
           </div>
           <div>
-            <h1 class="text-base sm:text-lg font-bold leading-tight">Hotel Condition Audit Tool</h1>
-            <p class="text-[11px] sm:text-xs text-slate-400">Real-Time Audit & Excel Generator</p>
+            <h1 class="text-base sm:text-lg font-bold leading-tight">Hotel Master Condition Audit</h1>
+            <p class="text-[11px] sm:text-xs text-slate-400">Consolidated Multi-Department Digital Inspector</p>
           </div>
         </div>
         <span id="syncStatusBadge" class="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] px-2 py-0.5 rounded-full flex items-center space-x-1 shrink-0">
@@ -49,18 +49,17 @@
         </span>
       </div>
       <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
-        <!-- Explicit Save / Submit Button -->
         <button onclick="submitAudit()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
           <i class="fa-solid fa-cloud-arrow-up"></i>
           <span>Save / Submit Audit</span>
         </button>
-        <button onclick="clearForm()" class="bg-rose-900/40 hover:bg-rose-900/60 text-rose-300 text-xs text-nowrap px-3 py-2 rounded-md border border-rose-800/50 transition flex items-center space-x-1">
+        <button onclick="clearAllAudits()" class="bg-rose-900/40 hover:bg-rose-900/60 text-rose-300 text-xs text-nowrap px-3 py-2 rounded-md border border-rose-800/50 transition flex items-center space-x-1">
           <i class="fa-solid fa-trash-can"></i>
-          <span>Reset</span>
+          <span>Reset All Data</span>
         </button>
-        <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
+        <button onclick="exportConsolidatedExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
           <i class="fa-solid fa-file-excel"></i>
-          <span>Export Excel (.xlsx)</span>
+          <span>Export Master Excel (.xlsx)</span>
         </button>
       </div>
     </div>
@@ -74,17 +73,17 @@
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
           <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
-          <span>Audit Metadata & General Details</span>
+          <span>Audit Metadata & Active Department Selection</span>
         </h2>
-        <span class="text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full">Inspection Info</span>
+        <span class="text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full">Inspection Setup</span>
       </div>
       
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Department *</label>
-          <select id="department" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Select Active Department *</label>
+          <select id="department" onchange="handleDepartmentChange(this.value)" class="w-full bg-amber-50 border border-amber-300 font-bold text-slate-900 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
             <option value="Front Office">Front Office</option>
-            <option value="Housekeeping">Housekeeping</option>
+            <option value="Housekeeping" selected>Housekeeping</option>
             <option value="Food & Beverage Service">Food & Beverage Service</option>
             <option value="Kitchen / Culinary">Kitchen / Culinary</option>
             <option value="Engineering & Maintenance">Engineering & Maintenance</option>
@@ -95,21 +94,22 @@
             <option value="Laundry & Linen">Laundry & Linen</option>
             <option value="Hygiene & Food Safety">Hygiene & Food Safety</option>
           </select>
+          <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-info-circle"></i> Selecting a new department switches active entry view & saves progress.</p>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Auditor Name *</label>
-          <input type="text" id="auditorName" onchange="syncMetaToCloud()" placeholder="e.g. John Doe (Training Manager)" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+          <input type="text" id="auditorName" onchange="syncMetaToCloud()" placeholder="e.g. Muthu (Training Manager)" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Audit Date & Time</label>
-          <input type="datetime-local" id="auditDate" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+          <input type="datetime-local" id="auditDate" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Overall Inspection Status</label>
-          <select id="overallStatus" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Overall Hotel Inspection Status</label>
+          <select id="overallStatus" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
             <option value="Fully Compliant">🟢 Fully Compliant</option>
             <option value="Minor Action Needed">🟡 Minor Action Needed</option>
             <option value="Critical Attention Required">🔴 Critical Attention Required</option>
@@ -118,8 +118,8 @@
       </div>
     </div>
 
-    <!-- Summary Statistics Bar -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <!-- Master Summary Statistics Bar (Property-Wide) -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
           <p class="text-xs font-semibold text-slate-500 uppercase">Total Items</p>
@@ -152,6 +152,16 @@
 
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
+          <p class="text-xs font-semibold text-slate-500 uppercase">Rectified / Fixed</p>
+          <p id="statRectified" class="text-2xl font-bold text-blue-600">0</p>
+        </div>
+        <div class="bg-blue-50 p-3 rounded-lg text-blue-600">
+          <i class="fa-solid fa-wrench text-xl"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between col-span-2 sm:col-span-1">
+        <div>
           <p class="text-xs font-semibold text-slate-500 uppercase">Critical / Urgent</p>
           <p id="statCritical" class="text-2xl font-bold text-rose-600">0</p>
         </div>
@@ -161,15 +171,44 @@
       </div>
     </div>
 
-    <!-- Observations Section Header -->
+    <!-- Department Rectification Breakdown Table / Widget -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+          <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+          <span>Department-wise Rectification Breakdown</span>
+        </h3>
+        <span class="text-xs text-slate-500">Live Property Overview</span>
+      </div>
+      
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
+              <th class="p-2.5">Department</th>
+              <th class="p-2.5 text-center">Total Inspected</th>
+              <th class="p-2.5 text-center">Pending Action</th>
+              <th class="p-2.5 text-center">Rectified Count</th>
+              <th class="p-2.5 text-center">Pass / Compliant</th>
+              <th class="p-2.5 text-right">Completion Rate</th>
+            </tr>
+          </thead>
+          <tbody id="deptBreakdownBody" class="divide-y divide-slate-100 text-slate-600">
+            <!-- Dynamic Department Rows Generated Here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Active Department Observations Log Section -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
           <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
             <i class="fa-solid fa-camera text-indigo-600"></i>
-            <span>Audit Condition Log & Observations</span>
+            <span>Observations Log - <span id="activeDeptTitle" class="text-indigo-600">Housekeeping</span></span>
           </h2>
-          <p class="text-xs text-slate-500">Record specific area conditions, capture defect/rectified photos, and specify required actions.</p>
+          <p class="text-xs text-slate-500">Log defect items, record actions, and attach Before & After rectification photos.</p>
         </div>
         <div class="flex items-center space-x-2">
           <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center space-x-1 no-print">
@@ -193,8 +232,8 @@
         <div class="bg-indigo-50 text-indigo-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
           <i class="fa-solid fa-folder-open text-xl"></i>
         </div>
-        <h3 class="text-sm font-semibold text-slate-700">No Observation Records Added Yet</h3>
-        <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Start your condition audit by adding an observation item for any department area.</p>
+        <h3 class="text-sm font-semibold text-slate-700">No Observation Records for <span id="emptyDeptName">Housekeeping</span></h3>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Start by adding an observation item for this department.</p>
         <button onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2 rounded-lg shadow transition inline-flex items-center space-x-1.5">
           <i class="fa-solid fa-plus"></i>
           <span>Add First Observation</span>
@@ -205,18 +244,35 @@
   </main>
 
   <footer class="bg-slate-900 text-slate-400 text-xs py-4 text-center border-t border-slate-800 mt-auto no-print">
-    <p>Hotel Condition Audit Tool &bull; Multi-Device Live Sync & Excel Export Engine</p>
+    <p>Hotel Condition Audit Tool &bull; Multi-Department Consolidated Inspection & Excel Generator</p>
   </footer>
 
-  <!-- Firebase & App Script -->
+  <!-- Firebase & Application Engine -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     let db = null;
     let isFirebaseActive = false;
-    let observations = [];
-    const AUDIT_DOC_ID = "active_hotel_audit";
+    
+    // Master data structure: Array containing all observations across ALL departments
+    let masterObservations = [];
+    let activeDepartment = "Housekeeping";
+    const AUDIT_DOC_ID = "active_hotel_master_audit";
+
+    const ALL_DEPARTMENTS = [
+      "Front Office",
+      "Housekeeping",
+      "Food & Beverage Service",
+      "Kitchen / Culinary",
+      "Engineering & Maintenance",
+      "Security & Loss Prevention",
+      "Spa & Recreation",
+      "Sales & Marketing",
+      "Human Resources & Training",
+      "Laundry & Linen",
+      "Hygiene & Food Safety"
+    ];
 
     const DEFAULT_FIREBASE_CONFIG = {
       apiKey: "AIzaSyCvuqr0DltPd2_FmGF2oUozB4d1SDg5W4U",
@@ -243,7 +299,7 @@
         toast.classList.remove('opacity-0', 'pointer-events-none');
         setTimeout(() => {
           toast.classList.add('opacity-0', 'pointer-events-none');
-        }, 3000);
+        }, 3200);
       }
     }
 
@@ -262,13 +318,13 @@
         onSnapshot(doc(db, "audits", AUDIT_DOC_ID), (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
-            if (data.department) document.getElementById('department').value = data.department;
             if (data.auditorName) document.getElementById('auditorName').value = data.auditorName;
             if (data.auditDate) document.getElementById('auditDate').value = data.auditDate;
             if (data.overallStatus) document.getElementById('overallStatus').value = data.overallStatus;
-            if (Array.isArray(data.observations)) {
-              observations = data.observations;
-              renderObservations();
+            if (Array.isArray(data.masterObservations)) {
+              masterObservations = data.masterObservations;
+              renderActiveDepartmentView();
+              updateMasterDashboardStats();
             }
           }
         }, (error) => {
@@ -291,11 +347,10 @@
       }
 
       const auditData = {
-        department: document.getElementById('department').value,
         auditorName: document.getElementById('auditorName').value,
         auditDate: document.getElementById('auditDate').value,
         overallStatus: document.getElementById('overallStatus').value,
-        observations: observations,
+        masterObservations: masterObservations,
         lastUpdated: new Date().toISOString()
       };
 
@@ -309,76 +364,102 @@
 
     function submitAudit() {
       syncToCloud();
-      showToast("Audit submitted and synced across all devices!");
+      showToast("Audit data saved & synced across all devices!");
     }
 
     function saveLocalDraft() {
       const data = {
-        department: document.getElementById('department').value,
         auditorName: document.getElementById('auditorName').value,
         auditDate: document.getElementById('auditDate').value,
         overallStatus: document.getElementById('overallStatus').value,
-        observations: observations
+        masterObservations: masterObservations
       };
-      localStorage.setItem('hotel_audit_draft', JSON.stringify(data));
+      localStorage.setItem('hotel_master_audit_draft', JSON.stringify(data));
     }
 
     function loadLocalDraft() {
-      const saved = localStorage.getItem('hotel_audit_draft');
+      const saved = localStorage.getItem('hotel_master_audit_draft');
       if (saved) {
         try {
           const data = JSON.parse(saved);
-          if (data.department) document.getElementById('department').value = data.department;
           if (data.auditorName) document.getElementById('auditorName').value = data.auditorName;
           if (data.auditDate) document.getElementById('auditDate').value = data.auditDate;
           if (data.overallStatus) document.getElementById('overallStatus').value = data.overallStatus;
-          if (Array.isArray(data.observations)) observations = data.observations;
+          if (Array.isArray(data.masterObservations)) masterObservations = data.masterObservations;
         } catch (e) {
           console.error('Failed to parse local draft', e);
         }
       }
-      renderObservations();
+      renderActiveDepartmentView();
+      updateMasterDashboardStats();
     }
 
-    function renderObservations() {
+    // REQUIREMENT 3: Selecting a new department switches view cleanly & resets local parameters for new logs
+    function handleDepartmentChange(newDept) {
+      activeDepartment = newDept;
+      document.getElementById('activeDeptTitle').innerText = activeDepartment;
+      document.getElementById('emptyDeptName').innerText = activeDepartment;
+      
+      renderActiveDepartmentView();
+      showToast(`Switched view to ${activeDepartment}. Ready for logs.`);
+    }
+
+    function renderActiveDepartmentView() {
       const container = document.getElementById('observationsContainer');
       const emptyState = document.getElementById('emptyState');
       container.innerHTML = '';
 
-      if (observations.length === 0) {
+      // Filter observations for currently active department
+      const deptObs = masterObservations.filter(obs => obs.department === activeDepartment);
+
+      if (deptObs.length === 0) {
         emptyState.classList.remove('hidden');
       } else {
         emptyState.classList.add('hidden');
       }
 
-      observations.forEach((obs, index) => {
+      deptObs.forEach((obs, index) => {
+        // Find true index in master array
+        const masterIndex = masterObservations.indexOf(obs);
+
         const card = document.createElement('div');
-        card.className = "bg-slate-50 rounded-xl p-4 border border-slate-200 relative transition hover:border-indigo-300";
+        card.className = "bg-slate-50 rounded-xl p-4 border border-slate-200 relative transition hover:border-indigo-300 space-y-3";
+        
+        // Status Badge formatting
+        let statusBg = "bg-amber-100 text-amber-800 border-amber-300";
+        if (obs.status === 'Pass / Compliant') statusBg = "bg-emerald-100 text-emerald-800 border-emerald-300";
+        if (obs.status === 'Rectified / Fixed') statusBg = "bg-blue-100 text-blue-800 border-blue-300";
+        if (obs.status === 'Critical Defect') statusBg = "bg-rose-100 text-rose-800 border-rose-300";
+
         card.innerHTML = `
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-200">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-200">
             <div class="flex items-center space-x-2">
               <span class="bg-slate-800 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">${index + 1}</span>
-              <select onchange="updateObservation(${index}, 'status', this.value)" class="bg-white border border-slate-300 text-slate-800 font-semibold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500">
-                <option value="Pass / Compliant" ${obs.status === 'Pass / Compliant' ? 'selected' : ''}>🟢 Pass / Compliant</option>
+              <span class="text-xs font-bold uppercase text-slate-500 bg-slate-200 px-2 py-0.5 rounded">${obs.department}</span>
+              
+              <!-- Status Select Box -->
+              <select onchange="updateObservation(${masterIndex}, 'status', this.value)" class="border font-semibold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 ${statusBg}">
                 <option value="Action Required" ${obs.status === 'Action Required' ? 'selected' : ''}>🟡 Action Required</option>
+                <option value="Rectified / Fixed" ${obs.status === 'Rectified / Fixed' ? 'selected' : ''}>🔵 Rectified / Fixed</option>
+                <option value="Pass / Compliant" ${obs.status === 'Pass / Compliant' ? 'selected' : ''}>🟢 Pass / Compliant</option>
                 <option value="Critical Defect" ${obs.status === 'Critical Defect' ? 'selected' : ''}>🔴 Critical Defect</option>
-                <option value="Pending Review" ${obs.status === 'Pending Review' ? 'selected' : ''}>🔵 Pending Review</option>
+                <option value="Pending Review" ${obs.status === 'Pending Review' ? 'selected' : ''}>⚙️ Pending Review</option>
               </select>
             </div>
-            <button onclick="removeObservation(${index})" class="text-slate-400 hover:text-rose-600 transition self-end md:self-auto text-xs px-2 py-1 rounded no-print">
-              <i class="fa-solid fa-trash-can"></i> Remove
+            <button onclick="removeObservation(${masterIndex})" class="text-slate-400 hover:text-rose-600 transition self-end md:self-auto text-xs px-2 py-1 rounded no-print">
+              <i class="fa-solid fa-trash-can"></i> Remove Item
             </button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Specific Location / Item</label>
-              <input type="text" value="${obs.location || ''}" onchange="updateObservation(${index}, 'location', this.value)" placeholder="e.g. Main Kitchen Cold Prep Area" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
+              <input type="text" value="${obs.location || ''}" onchange="updateObservation(${masterIndex}, 'location', this.value)" placeholder="e.g. Lobby Carpet / Room 204" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
             </div>
 
             <div>
               <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Category / Issue Type</label>
-              <select onchange="updateObservation(${index}, 'category', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
+              <select onchange="updateObservation(${masterIndex}, 'category', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
                 <option value="Cleanliness / Hygiene" ${obs.category === 'Cleanliness / Hygiene' ? 'selected' : ''}>Cleanliness / Hygiene</option>
                 <option value="Maintenance / Damage" ${obs.category === 'Maintenance / Damage' ? 'selected' : ''}>Maintenance / Damage</option>
                 <option value="Safety & Hazard" ${obs.category === 'Safety & Hazard' ? 'selected' : ''}>Safety & Hazard</option>
@@ -390,7 +471,7 @@
 
             <div>
               <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Severity / Priority</label>
-              <select onchange="updateObservation(${index}, 'priority', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
+              <select onchange="updateObservation(${masterIndex}, 'priority', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
                 <option value="Low Priority" ${obs.priority === 'Low Priority' ? 'selected' : ''}>Low Priority</option>
                 <option value="Medium / Follow-up" ${obs.priority === 'Medium / Follow-up' ? 'selected' : ''}>Medium / Follow-up</option>
                 <option value="High / Urgent" ${obs.priority === 'High / Urgent' ? 'selected' : ''}>High / Urgent</option>
@@ -400,22 +481,22 @@
 
             <div>
               <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Target Completion Date</label>
-              <input type="date" value="${obs.targetDate || ''}" onchange="updateObservation(${index}, 'targetDate', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
+              <input type="date" value="${obs.targetDate || ''}" onchange="updateObservation(${masterIndex}, 'targetDate', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Defect Observation / Notes</label>
-              <textarea rows="2" onchange="updateObservation(${index}, 'notes', this.value)" placeholder="Describe the physical condition or fault..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.notes || ''}</textarea>
+              <textarea rows="2" onchange="updateObservation(${masterIndex}, 'notes', this.value)" placeholder="Describe the physical condition or fault..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.notes || ''}</textarea>
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Action Plan & Rectification Details</label>
-              <textarea rows="2" onchange="updateObservation(${index}, 'actionPlan', this.value)" placeholder="Specify required corrective action or rectified notes..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.actionPlan || ''}</textarea>
+              <textarea rows="2" onchange="updateObservation(${masterIndex}, 'actionPlan', this.value)" placeholder="Specify required corrective action or rectified notes..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.actionPlan || ''}</textarea>
             </div>
           </div>
 
-          <!-- Dual Photo Section -->
+          <!-- Dual Photo Upload Section -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-slate-200">
             <!-- Before Photo Slot -->
             <div>
@@ -424,17 +505,17 @@
                   <i class="fa-solid fa-triangle-exclamation"></i>
                   <span>Before / Defect Photo</span>
                 </span>
-                ${obs.beforeImage ? `<button onclick="removeImage(${index}, 'beforeImage')" class="text-[10px] text-rose-600 underline">Delete Photo</button>` : ''}
+                ${obs.beforeImage ? `<button onclick="removeImage(${masterIndex}, 'beforeImage')" class="text-[10px] text-rose-600 underline">Delete Photo</button>` : ''}
               </div>
               ${obs.beforeImage ? `
-                <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-28 bg-slate-100 flex items-center justify-center">
+                <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-32 bg-slate-100 flex items-center justify-center">
                   <img src="${obs.beforeImage}" class="object-cover h-full w-full">
                 </div>
               ` : `
-                <label class="flex flex-col items-center justify-center h-28 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-rose-50/30 transition">
+                <label class="flex flex-col items-center justify-center h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-rose-50/30 transition">
                   <i class="fa-solid fa-camera text-slate-400 text-lg mb-1"></i>
                   <span class="text-[11px] text-slate-500 font-medium">Attach Defect Photo</span>
-                  <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${index}, 'beforeImage')" class="hidden">
+                  <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${masterIndex}, 'beforeImage')" class="hidden">
                 </label>
               `}
             </div>
@@ -442,21 +523,21 @@
             <!-- After Photo Slot -->
             <div>
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs font-bold text-emerald-700 uppercase flex items-center space-x-1">
+                <span class="text-xs font-bold text-blue-700 uppercase flex items-center space-x-1">
                   <i class="fa-solid fa-circle-check"></i>
                   <span>After / Rectified Photo</span>
                 </span>
-                ${obs.afterImage ? `<button onclick="removeImage(${index}, 'afterImage')" class="text-[10px] text-emerald-600 underline">Delete Photo</button>` : ''}
+                ${obs.afterImage ? `<button onclick="removeImage(${masterIndex}, 'afterImage')" class="text-[10px] text-blue-600 underline">Delete Photo</button>` : ''}
               </div>
               ${obs.afterImage ? `
-                <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-28 bg-slate-100 flex items-center justify-center">
+                <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-32 bg-slate-100 flex items-center justify-center">
                   <img src="${obs.afterImage}" class="object-cover h-full w-full">
                 </div>
               ` : `
-                <label class="flex flex-col items-center justify-center h-28 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-emerald-50/30 transition">
+                <label class="flex flex-col items-center justify-center h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-blue-50/30 transition">
                   <i class="fa-solid fa-camera text-slate-400 text-lg mb-1"></i>
                   <span class="text-[11px] text-slate-500 font-medium">Attach Rectified Photo</span>
-                  <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${index}, 'afterImage')" class="hidden">
+                  <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${masterIndex}, 'afterImage')" class="hidden">
                 </label>
               `}
             </div>
@@ -465,11 +546,13 @@
         container.appendChild(card);
       });
 
-      updateStats();
+      updateMasterDashboardStats();
     }
 
     function addObservationItem() {
-      observations.push({
+      masterObservations.push({
+        id: Date.now(),
+        department: activeDepartment,
         status: 'Action Required',
         location: '',
         category: 'Cleanliness / Hygiene',
@@ -480,69 +563,126 @@
         beforeImage: null,
         afterImage: null
       });
-      renderObservations();
+      renderActiveDepartmentView();
       syncToCloud();
     }
 
-    function removeObservation(index) {
-      observations.splice(index, 1);
-      renderObservations();
+    function removeObservation(masterIndex) {
+      masterObservations.splice(masterIndex, 1);
+      renderActiveDepartmentView();
       syncToCloud();
     }
 
-    function updateObservation(index, field, value) {
-      observations[index][field] = value;
-      updateStats();
+    function updateObservation(masterIndex, field, value) {
+      masterObservations[masterIndex][field] = value;
+      renderActiveDepartmentView();
       syncToCloud();
     }
 
-    function handleImageUpload(event, index, field) {
+    // REQUIREMENT 1 FIX: Uploading an After/Rectified Photo automatically changes status to "Rectified / Fixed"
+    function handleImageUpload(event, masterIndex, field) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function(e) {
-        observations[index][field] = e.target.result;
+        masterObservations[masterIndex][field] = e.target.result;
 
-        // AUTOMATIC DASHBOARD RECTIFICATION LOGIC:
-        // When an After/Rectified Photo is uploaded and the item is currently marked 'Action Required',
-        // automatically switch status to 'Pass / Compliant' so dashboard updates immediately.
-        if (field === 'afterImage' && observations[index].status === 'Action Required') {
-          observations[index].status = 'Pass / Compliant';
-          showToast("Rectified photo attached! Item status automatically set to Pass / Compliant.");
+        if (field === 'afterImage') {
+          // Explicitly update status to Rectified / Fixed so dashboard shifts Action Needed -> Rectified Count!
+          masterObservations[masterIndex].status = 'Rectified / Fixed';
+          showToast(`Rectified photo uploaded! Status updated to 'Rectified / Fixed' for ${masterObservations[masterIndex].department}.`);
         }
 
-        renderObservations();
+        renderActiveDepartmentView();
         syncToCloud();
       };
       reader.readAsDataURL(file);
     }
 
-    function removeImage(index, field) {
-      observations[index][field] = null;
-      renderObservations();
+    function removeImage(masterIndex, field) {
+      masterObservations[masterIndex][field] = null;
+      if (field === 'afterImage' && masterObservations[masterIndex].status === 'Rectified / Fixed') {
+        masterObservations[masterIndex].status = 'Action Required';
+      }
+      renderActiveDepartmentView();
       syncToCloud();
     }
 
-    function updateStats() {
-      document.getElementById('statTotal').innerText = observations.length;
-      document.getElementById('statPassed').innerText = observations.filter(o => o.status === 'Pass / Compliant').length;
-      document.getElementById('statAction').innerText = observations.filter(o => o.status === 'Action Required' || o.status === 'Pending Review').length;
-      document.getElementById('statCritical').innerText = observations.filter(o => o.status === 'Critical Defect').length;
-    }
+    // REQUIREMENT 2: Property-wide Dashboard Stats & Department Rectified Count Breakdown
+    function updateMasterDashboardStats() {
+      const total = masterObservations.length;
+      const passed = masterObservations.filter(o => o.status === 'Pass / Compliant').length;
+      const rectified = masterObservations.filter(o => o.status === 'Rectified / Fixed' || (o.afterImage && o.status !== 'Action Required')).length;
+      const actionNeeded = masterObservations.filter(o => o.status === 'Action Required' || o.status === 'Pending Review').length;
+      const critical = masterObservations.filter(o => o.status === 'Critical Defect').length;
 
-    function clearForm() {
-      if (confirm('Are you sure you want to clear the entire audit form across all devices?')) {
-        observations = [];
-        document.getElementById('auditorName').value = '';
-        renderObservations();
-        syncToCloud();
+      document.getElementById('statTotal').innerText = total;
+      document.getElementById('statPassed').innerText = passed;
+      document.getElementById('statAction').innerText = actionNeeded;
+      document.getElementById('statRectified').innerText = rectified;
+      document.getElementById('statCritical').innerText = critical;
+
+      // Render Department Breakdown Table (Req 2)
+      const tbody = document.getElementById('deptBreakdownBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      let hasData = false;
+      ALL_DEPARTMENTS.forEach(dept => {
+        const deptItems = masterObservations.filter(o => o.department === dept);
+        if (deptItems.length > 0) {
+          hasData = true;
+          const dTotal = deptItems.length;
+          const dPending = deptItems.filter(o => o.status === 'Action Required' || o.status === 'Pending Review' || o.status === 'Critical Defect').length;
+          const dRectified = deptItems.filter(o => o.status === 'Rectified / Fixed' || o.afterImage).length;
+          const dPassed = deptItems.filter(o => o.status === 'Pass / Compliant').length;
+          const completionRate = Math.round(((dRectified + dPassed) / dTotal) * 100);
+
+          const tr = document.createElement('tr');
+          tr.className = dept === activeDepartment ? "bg-amber-50/70 font-medium" : "hover:bg-slate-50";
+          tr.innerHTML = `
+            <td class="p-2.5 font-bold text-slate-800 flex items-center space-x-1.5">
+              <span>${dept}</span>
+              ${dept === activeDepartment ? `<span class="bg-amber-200 text-amber-900 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold">Active</span>` : ''}
+            </td>
+            <td class="p-2.5 text-center font-semibold text-slate-700">${dTotal}</td>
+            <td class="p-2.5 text-center">
+              ${dPending > 0 ? `<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">${dPending}</span>` : `<span class="text-slate-400">0</span>`}
+            </td>
+            <td class="p-2.5 text-center">
+              ${dRectified > 0 ? `<span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-wrench mr-1"></i>${dRectified}</span>` : `<span class="text-slate-400">0</span>`}
+            </td>
+            <td class="p-2.5 text-center">
+              ${dPassed > 0 ? `<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">${dPassed}</span>` : `<span class="text-slate-400">0</span>`}
+            </td>
+            <td class="p-2.5 text-right font-bold text-slate-800">
+              <span class="${completionRate === 100 ? 'text-emerald-600' : 'text-slate-700'}">${completionRate}%</span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+      });
+
+      if (!hasData) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">No observation records logged yet across departments.</td></tr>`;
       }
     }
 
-    async function exportToExcel() {
-      if (observations.length === 0) {
-        alert('Please add at least one observation before exporting to Excel.');
+    function clearAllAudits() {
+      if (confirm('Are you sure you want to RESET ALL AUDIT DATA across all departments? This cannot be undone.')) {
+        masterObservations = [];
+        document.getElementById('auditorName').value = '';
+        renderActiveDepartmentView();
+        syncToCloud();
+        showToast("All property audit records cleared.");
+      }
+    }
+
+    // REQUIREMENT 4: Consolidated Excel Report featuring ALL departments & photos in a single document
+    async function exportConsolidatedExcel() {
+      if (masterObservations.length === 0) {
+        alert('No audit observations recorded yet. Please add at least one observation before exporting.');
         return;
       }
 
@@ -550,64 +690,94 @@
       workbook.creator = 'Hotel Condition Audit Tool';
       workbook.created = new Date();
 
-      const dept = document.getElementById('department').value;
       const auditor = document.getElementById('auditorName').value || 'Unassigned';
       const auditDate = document.getElementById('auditDate').value;
       const overallStatus = document.getElementById('overallStatus').value;
 
-      // 1. Executive Summary Sheet
+      // SHEET 1: Executive Property Summary & Department Breakdown Table
       const summarySheet = workbook.addWorksheet('Executive Summary');
       summarySheet.views = [{ showGridLines: true }];
 
       summarySheet.columns = [
-        { width: 25 },
-        { width: 35 }
+        { width: 28 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 }
       ];
 
-      summarySheet.addRow(['HOTEL CONDITION AUDIT REPORT']).font = { bold: true, size: 16, color: { argb: '1E293B' } };
+      summarySheet.addRow(['HOTEL CONDITION AUDIT - MASTER PROPERTY REPORT']).font = { bold: true, size: 16, color: { argb: '1E293B' } };
       summarySheet.addRow([]);
 
-      summarySheet.addRow(['Department', dept]);
-      summarySheet.addRow(['Auditor Name', auditor]);
-      summarySheet.addRow(['Audit Date & Time', auditDate]);
-      summarySheet.addRow(['Overall Status', overallStatus]);
+      summarySheet.addRow(['Auditor Name:', auditor]);
+      summarySheet.addRow(['Audit Date & Time:', auditDate]);
+      summarySheet.addRow(['Overall Hotel Status:', overallStatus]);
       summarySheet.addRow([]);
 
-      summarySheet.addRow(['SUMMARY METRICS', 'COUNT']).font = { bold: true, size: 12 };
-      summarySheet.addRow(['Total Items Inspected', observations.length]);
-      summarySheet.addRow(['Passed / Compliant', observations.filter(o => o.status === 'Pass / Compliant').length]);
-      summarySheet.addRow(['Action Required', observations.filter(o => o.status === 'Action Required' || o.status === 'Pending Review').length]);
-      summarySheet.addRow(['Critical Defects', observations.filter(o => o.status === 'Critical Defect').length]);
+      // Property Metrics
+      summarySheet.addRow(['PROPERTY-WIDE AUDIT METRICS', 'COUNT']).font = { bold: true, size: 12 };
+      summarySheet.addRow(['Total Observations Inspected', masterObservations.length]);
+      summarySheet.addRow(['Passed / Compliant Items', masterObservations.filter(o => o.status === 'Pass / Compliant').length]);
+      summarySheet.addRow(['Rectified / Resolved Items', masterObservations.filter(o => o.status === 'Rectified / Fixed' || o.afterImage).length]);
+      summarySheet.addRow(['Pending Action Items', masterObservations.filter(o => o.status === 'Action Required' || o.status === 'Pending Review').length]);
+      summarySheet.addRow(['Critical Urgent Hazards', masterObservations.filter(o => o.status === 'Critical Defect').length]);
+      summarySheet.addRow([]);
 
-      // 2. Audit Log Sheet
-      const logSheet = workbook.addWorksheet('Condition Audit Log');
+      // Department Breakdown Table
+      summarySheet.addRow(['DEPARTMENT RECTIFICATION BREAKDOWN']).font = { bold: true, size: 12 };
+      const tableHeaderRow = summarySheet.addRow(['Department', 'Total Inspected', 'Pending Action', 'Rectified Count', 'Pass Compliant', 'Completion %']);
+      tableHeaderRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+      tableHeaderRow.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E293B' } };
+        cell.alignment = { horizontal: 'center' };
+      });
+
+      ALL_DEPARTMENTS.forEach(dept => {
+        const deptObs = masterObservations.filter(o => o.department === dept);
+        if (deptObs.length > 0) {
+          const dTotal = deptObs.length;
+          const dPending = deptObs.filter(o => o.status === 'Action Required' || o.status === 'Pending Review' || o.status === 'Critical Defect').length;
+          const dRectified = deptObs.filter(o => o.status === 'Rectified / Fixed' || o.afterImage).length;
+          const dPassed = deptObs.filter(o => o.status === 'Pass / Compliant').length;
+          const completion = Math.round(((dRectified + dPassed) / dTotal) * 100);
+
+          summarySheet.addRow([dept, dTotal, dPending, dRectified, dPassed, `${completion}%`]);
+        }
+      });
+
+      // SHEET 2: Consolidated Multi-Department Audit Log (With Before & After Photos)
+      const logSheet = workbook.addWorksheet('Master Audit Log (All Depts)');
       logSheet.views = [{ showGridLines: true }];
 
       logSheet.columns = [
-        { header: '#', key: 'idx', width: 6 },
+        { header: '#', key: 'idx', width: 5 },
+        { header: 'Department', key: 'dept', width: 22 },
         { header: 'Status', key: 'status', width: 20 },
-        { header: 'Location / Item', key: 'location', width: 25 },
-        { header: 'Category', key: 'category', width: 25 },
-        { header: 'Priority', key: 'priority', width: 18 },
-        { header: 'Defect Observation / Notes', key: 'notes', width: 35 },
-        { header: 'Before (Defect) Photo', key: 'beforeImg', width: 22 },
-        { header: 'Action Plan & Rectification', key: 'actionPlan', width: 35 },
-        { header: 'After (Rectified) Photo', key: 'afterImg', width: 22 },
-        { header: 'Target Date', key: 'targetDate', width: 15 }
+        { header: 'Location / Item', key: 'location', width: 22 },
+        { header: 'Category', key: 'category', width: 22 },
+        { header: 'Priority', key: 'priority', width: 16 },
+        { header: 'Defect Observation / Notes', key: 'notes', width: 32 },
+        { header: 'Before (Defect) Photo', key: 'beforeImg', width: 24 },
+        { header: 'Action Plan & Rectification Details', key: 'actionPlan', width: 32 },
+        { header: 'After (Rectified) Photo', key: 'afterImg', width: 24 },
+        { header: 'Target Date', key: 'targetDate', width: 14 }
       ];
 
-      const headerRow = logSheet.getRow(1);
-      headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
-      headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E293B' } };
-      headerRow.height = 25;
-      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      const logHeaderRow = logSheet.getRow(1);
+      logHeaderRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
+      logHeaderRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E293B' } };
+      logHeaderRow.height = 28;
+      logHeaderRow.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      for (let i = 0; i < observations.length; i++) {
-        const obs = observations[i];
-        const rowNumber = i + 2;
+      // Populate row data & embed images
+      for (let i = 0; i < masterObservations.length; i++) {
+        const obs = masterObservations[i];
+        const rowNum = i + 2;
 
         const row = logSheet.addRow({
           idx: i + 1,
+          dept: obs.department,
           status: obs.status,
           location: obs.location || '-',
           category: obs.category,
@@ -619,43 +789,45 @@
           targetDate: obs.targetDate || '-'
         });
 
-        row.height = 80;
+        row.height = 85;
         row.alignment = { vertical: 'middle', wrapText: true };
 
-        // Embed Before Image
+        // Embed Before Photo
         if (obs.beforeImage && obs.beforeImage.startsWith('data:image')) {
           try {
             const imageId = workbook.addImage({ base64: obs.beforeImage, extension: 'jpeg' });
-            logSheet.addImage(imageId, { tl: { col: 6, row: rowNumber - 1 }, ext: { width: 110, height: 95 } });
+            logSheet.addImage(imageId, { tl: { col: 7, row: rowNum - 1 }, ext: { width: 120, height: 100 } });
           } catch (e) {
-            console.error('Failed to embed before image', e);
+            console.error('Error embedding before image', e);
           }
         }
 
-        // Embed After Image
+        // Embed After Photo
         if (obs.afterImage && obs.afterImage.startsWith('data:image')) {
           try {
             const imageId = workbook.addImage({ base64: obs.afterImage, extension: 'jpeg' });
-            logSheet.addImage(imageId, { tl: { col: 8, row: rowNumber - 1 }, ext: { width: 110, height: 95 } });
+            logSheet.addImage(imageId, { tl: { col: 9, row: rowNum - 1 }, ext: { width: 120, height: 100 } });
           } catch (e) {
-            console.error('Failed to embed after image', e);
+            console.error('Error embedding after image', e);
           }
         }
       }
 
-      const fileName = `Hotel_Condition_Audit_${dept.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`;
+      const fileName = `Hotel_Master_Condition_Audit_${new Date().toISOString().slice(0,10)}.xlsx`;
       const buffer = await workbook.xlsx.writeBuffer();
       saveAs(new Blob([buffer]), fileName);
+      showToast("Master Consolidated Excel report downloaded successfully!");
     }
 
-    // Attach global window handlers
+    // Attach global window functions
+    window.handleDepartmentChange = handleDepartmentChange;
     window.addObservationItem = addObservationItem;
     window.removeObservation = removeObservation;
     window.updateObservation = updateObservation;
     window.handleImageUpload = handleImageUpload;
     window.removeImage = removeImage;
-    window.clearForm = clearForm;
-    window.exportToExcel = exportToExcel;
+    window.clearAllAudits = clearAllAudits;
+    window.exportConsolidatedExcel = exportConsolidatedExcel;
     window.submitAudit = submitAudit;
     window.syncMetaToCloud = syncToCloud;
   </script>
