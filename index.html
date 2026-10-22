@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hotel Condition Audit & Excel Generator (Firebase Sync)</title>
+  <title>Hotel Condition Audit & Excel Generator</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome -->
@@ -24,36 +24,6 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
 
-  <!-- Firebase Configuration Modal -->
-  <div id="firebaseConfigModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
-      <div class="flex items-center space-x-3 text-amber-600">
-        <i class="fa-solid fa-fire-flame-curved text-2xl"></i>
-        <h3 class="text-lg font-bold text-slate-900">Configure Firebase Live Sync</h3>
-      </div>
-      <p class="text-xs text-slate-600 leading-relaxed">
-        Paste your Firebase Web App configuration object below to enable real-time cross-device synchronization and cloud image storage.
-      </p>
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Firebase SDK Config (JSON / JS Object)</label>
-        <textarea id="firebaseConfigInput" rows="7" placeholder='{
-  "apiKey": "YOUR_API_KEY",
-  "authDomain": "YOUR_PROJECT.firebaseapp.com",
-  "projectId": "YOUR_PROJECT_ID",
-  "storageBucket": "YOUR_PROJECT.appspot.com",
-  "messagingSenderId": "YOUR_SENDER_ID",
-  "appId": "YOUR_APP_ID"
-}' class="w-full bg-slate-50 border border-slate-300 font-mono text-xs rounded-lg p-3 focus:ring-2 focus:ring-indigo-500"></textarea>
-      </div>
-      <div class="flex justify-between items-center pt-2">
-        <button onclick="skipFirebaseConfig()" class="text-xs text-slate-500 hover:text-slate-800 underline">Continue with Offline/Local Drafts</button>
-        <button onclick="saveFirebaseConfig()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2 rounded-lg shadow transition">
-          Connect Firebase & Sync
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Navigation Bar -->
   <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40 no-print">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -64,20 +34,15 @@
           </div>
           <div>
             <h1 class="text-base sm:text-lg font-bold leading-tight">Hotel Condition Audit Tool</h1>
-            <p class="text-[11px] sm:text-xs text-slate-400">Real-Time Multi-Device Audit & Excel Generator</p>
+            <p class="text-[11px] sm:text-xs text-slate-400">Real-Time Audit & Excel Generator</p>
           </div>
         </div>
         <span id="syncStatusBadge" class="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] px-2 py-0.5 rounded-full flex items-center space-x-1 shrink-0">
           <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-          <span>Offline Mode</span>
+          <span>Initializing...</span>
         </span>
       </div>
       <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
-        <!-- Sync Settings Hidden -->
-        <button onclick="openConfigModal()" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm px-3 py-1.5 rounded-md border border-slate-700 transition flex items-center space-x-1">
-          <i class="fa-solid fa-gear"></i>
-          <span>Sync Settings</span>
-        </button>
         <button onclick="clearForm()" class="bg-rose-900/40 hover:bg-rose-900/60 text-rose-300 text-xs text-nowrap px-3 py-2 rounded-md border border-rose-800/50 transition flex items-center space-x-1">
           <i class="fa-solid fa-trash-can"></i>
           <span>Reset</span>
@@ -229,67 +194,18 @@
   </main>
 
   <footer class="bg-slate-900 text-slate-400 text-xs py-4 text-center border-t border-slate-800 mt-auto no-print">
-    <p>Hotel Condition Audit Tool &bull; Multi-Device Firebase Live Sync & Excel Export Engine</p>
+    <p>Hotel Condition Audit Tool &bull; Multi-Device Live Sync & Excel Export Engine</p>
   </footer>
 
   <!-- Firebase & App Script -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getStorage, ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     let db = null;
-    let storage = null;
     let isFirebaseActive = false;
     let observations = [];
     const AUDIT_DOC_ID = "active_hotel_audit";
-
-    // Set default datetime to now
-    window.addEventListener('DOMContentLoaded', () => {
-      const now = new Date();
-      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-      document.getElementById('auditDate').value = now.toISOString().slice(0, 16);
-      
-      initFirebaseFromStorage();
-    });
-
-    function updateSyncBadge(status, colorClass) {
-      const badge = document.getElementById('syncStatusBadge');
-      badge.innerHTML = `<span class="w-2 h-2 rounded-full ${colorClass}"></span><span>${status}</span>`;
-    }
-
-    function openConfigModal() {
-      document.getElementById('firebaseConfigModal').classList.remove('hidden');
-    }
-
-    function skipFirebaseConfig() {
-      document.getElementById('firebaseConfigModal').classList.add('hidden');
-      updateSyncBadge('Offline Mode (Local Draft)', 'bg-amber-400');
-      loadLocalDraft();
-    }
-
-    function saveFirebaseConfig() {
-      const val = document.getElementById('firebaseConfigInput').value.trim();
-      if (!val) {
-        alert('Please paste a valid Firebase configuration object.');
-        return;
-      }
-
-      try {
-        let configObj;
-        if (val.startsWith('{')) {
-          configObj = JSON.parse(val);
-        } else {
-          eval("configObj = " + val);
-        }
-
-        localStorage.setItem('firebase_hotel_config', JSON.stringify(configObj));
-        document.getElementById('firebaseConfigModal').classList.add('hidden');
-        initFirebase(configObj);
-      } catch (e) {
-        alert('Invalid Firebase configuration format. Please check the JSON syntax.');
-      }
-    }
 
     const DEFAULT_FIREBASE_CONFIG = {
       apiKey: "AIzaSyCvuqr0DltPd2_FmGF2oUozB4d1SDg5W4U",
@@ -300,29 +216,26 @@
       appId: "1:392033902726:web:1f7b78f1208bb8fca1b107"
     };
 
-    function initFirebaseFromStorage() {
-      document.getElementById('firebaseConfigModal').classList.add('hidden');
-      const savedConfig = localStorage.getItem('firebase_hotel_config');
-      if (savedConfig) {
-        try {
-          initFirebase(JSON.parse(savedConfig));
-        } catch (e) {
-          initFirebase(DEFAULT_FIREBASE_CONFIG);
-        }
-      } else {
-        initFirebase(DEFAULT_FIREBASE_CONFIG);
-      }
+    window.addEventListener('DOMContentLoaded', () => {
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      document.getElementById('auditDate').value = now.toISOString().slice(0, 16);
+      
+      initFirebase(DEFAULT_FIREBASE_CONFIG);
+    });
+
+    function updateSyncBadge(status, colorClass) {
+      const badge = document.getElementById('syncStatusBadge');
+      badge.innerHTML = `<span class="w-2 h-2 rounded-full ${colorClass}"></span><span>${status}</span>`;
     }
 
     function initFirebase(config) {
       try {
         const app = initializeApp(config);
         db = getFirestore(app);
-        storage = getStorage(app);
         isFirebaseActive = true;
         updateSyncBadge('Live Firebase Sync', 'bg-emerald-400');
 
-        // Set up real-time listener across devices
         onSnapshot(doc(db, "audits", AUDIT_DOC_ID), (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
@@ -338,11 +251,12 @@
         }, (error) => {
           console.error("Firestore listener error:", error);
           updateSyncBadge('Sync Error (Local Fallback)', 'bg-rose-400');
+          loadLocalDraft();
         });
 
       } catch (e) {
         console.error("Firebase init failed:", e);
-        updateSyncBadge('Offline Mode (Init Failed)', 'bg-amber-400');
+        updateSyncBadge('Offline Mode', 'bg-amber-400');
         loadLocalDraft();
       }
     }
@@ -554,29 +468,14 @@
       syncToCloud();
     }
 
-    async function handleImageUpload(event, index, field) {
+    function handleImageUpload(event, index, field) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = async function(e) {
-        const base64Img = e.target.result;
-        
-        // Upload to Firebase Cloud Storage if connected
-        if (isFirebaseActive && storage) {
-          try {
-            const storageRef = ref(storage, `audit_images/${Date.now()}_${field}_${index}.jpg`);
-            await uploadString(storageRef, base64Img, 'data_url');
-            const downloadURL = await getDownloadURL(storageRef);
-            observations[index][field] = downloadURL;
-          } catch (err) {
-            console.warn("Storage upload failed, fallback to base64", err);
-            observations[index][field] = base64Img;
-          }
-        } else {
-          observations[index][field] = base64Img;
-        }
-
+      reader.onload = function(e) {
+        // Direct Base64 encoding - solves CORS issues & displays photos instantly
+        observations[index][field] = e.target.result;
         renderObservations();
         syncToCloud();
       };
@@ -688,19 +587,9 @@
         row.alignment = { vertical: 'middle', wrapText: true };
 
         // Embed Before Image
-        if (obs.beforeImage) {
+        if (obs.beforeImage && obs.beforeImage.startsWith('data:image')) {
           try {
-            let base64Data = obs.beforeImage;
-            if (obs.beforeImage.startsWith('http')) {
-              const res = await fetch(obs.beforeImage);
-              const blob = await res.blob();
-              base64Data = await new Promise((resolve) => {
-                const r = new FileReader();
-                r.onloadend = () => resolve(r.result);
-                r.readAsDataURL(blob);
-              });
-            }
-            const imageId = workbook.addImage({ base64: base64Data, extension: 'jpeg' });
+            const imageId = workbook.addImage({ base64: obs.beforeImage, extension: 'jpeg' });
             logSheet.addImage(imageId, { tl: { col: 6, row: rowNumber - 1 }, ext: { width: 110, height: 95 } });
           } catch (e) {
             console.error('Failed to embed before image', e);
@@ -708,19 +597,9 @@
         }
 
         // Embed After Image
-        if (obs.afterImage) {
+        if (obs.afterImage && obs.afterImage.startsWith('data:image')) {
           try {
-            let base64Data = obs.afterImage;
-            if (obs.afterImage.startsWith('http')) {
-              const res = await fetch(obs.afterImage);
-              const blob = await res.blob();
-              base64Data = await new Promise((resolve) => {
-                const r = new FileReader();
-                r.onloadend = () => resolve(r.result);
-                r.readAsDataURL(blob);
-              });
-            }
-            const imageId = workbook.addImage({ base64: base64Data, extension: 'jpeg' });
+            const imageId = workbook.addImage({ base64: obs.afterImage, extension: 'jpeg' });
             logSheet.addImage(imageId, { tl: { col: 8, row: rowNumber - 1 }, ext: { width: 110, height: 95 } });
           } catch (e) {
             console.error('Failed to embed after image', e);
@@ -734,9 +613,6 @@
     }
 
     // Attach global window handlers
-    window.openConfigModal = openConfigModal;
-    window.skipFirebaseConfig = skipFirebaseConfig;
-    window.saveFirebaseConfig = saveFirebaseConfig;
     window.addObservationItem = addObservationItem;
     window.removeObservation = removeObservation;
     window.updateObservation = updateObservation;
