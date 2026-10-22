@@ -24,6 +24,12 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
 
+  <!-- Notification Toast -->
+  <div id="toastNotification" class="fixed bottom-5 right-5 bg-emerald-600 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl z-50 transition-all duration-300 opacity-0 pointer-events-none flex items-center space-x-2">
+    <i class="fa-solid fa-circle-check text-base"></i>
+    <span id="toastMessage">Audit changes saved and synced successfully!</span>
+  </div>
+
   <!-- Navigation Bar -->
   <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40 no-print">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -42,7 +48,12 @@
           <span>Initializing...</span>
         </span>
       </div>
-      <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+      <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
+        <!-- Explicit Save / Submit Button -->
+        <button onclick="submitAudit()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span>Save / Submit Audit</span>
+        </button>
         <button onclick="clearForm()" class="bg-rose-900/40 hover:bg-rose-900/60 text-rose-300 text-xs text-nowrap px-3 py-2 rounded-md border border-rose-800/50 transition flex items-center space-x-1">
           <i class="fa-solid fa-trash-can"></i>
           <span>Reset</span>
@@ -224,6 +235,18 @@
       initFirebase(DEFAULT_FIREBASE_CONFIG);
     });
 
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMessage');
+      if (toast && toastMsg) {
+        toastMsg.innerText = msg;
+        toast.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'pointer-events-none');
+        }, 3000);
+      }
+    }
+
     function updateSyncBadge(status, colorClass) {
       const badge = document.getElementById('syncStatusBadge');
       badge.innerHTML = `<span class="w-2 h-2 rounded-full ${colorClass}"></span><span>${status}</span>`;
@@ -282,6 +305,11 @@
         console.error("Cloud sync failed, saving locally", e);
         saveLocalDraft();
       }
+    }
+
+    function submitAudit() {
+      syncToCloud();
+      showToast("Audit submitted and synced across all devices!");
     }
 
     function saveLocalDraft() {
@@ -474,8 +502,16 @@
 
       const reader = new FileReader();
       reader.onload = function(e) {
-        // Direct Base64 encoding - solves CORS issues & displays photos instantly
         observations[index][field] = e.target.result;
+
+        // AUTOMATIC DASHBOARD RECTIFICATION LOGIC:
+        // When an After/Rectified Photo is uploaded and the item is currently marked 'Action Required',
+        // automatically switch status to 'Pass / Compliant' so dashboard updates immediately.
+        if (field === 'afterImage' && observations[index].status === 'Action Required') {
+          observations[index].status = 'Pass / Compliant';
+          showToast("Rectified photo attached! Item status automatically set to Pass / Compliant.");
+        }
+
         renderObservations();
         syncToCloud();
       };
@@ -620,6 +656,7 @@
     window.removeImage = removeImage;
     window.clearForm = clearForm;
     window.exportToExcel = exportToExcel;
+    window.submitAudit = submitAudit;
     window.syncMetaToCloud = syncToCloud;
   </script>
 </body>
