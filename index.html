@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hotel Condition Audit Tool - Consolidated Multi-Department Report System</title>
+  <title>Hotel Condition Audit Tool</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Font Awesome -->
@@ -17,7 +17,17 @@
     @media print {
       .no-print { display: none !important; }
       .print-only { display: block !important; }
-      body { background: white; color: black; }
+      body { background: white; color: black; padding: 0; margin: 0; }
+      .shadow-sm, .shadow-md, .shadow-xl { box-shadow: none !important; }
+      .border { border-color: #cbd5e1 !important; }
+      select, input, textarea {
+        border: none !important;
+        background: transparent !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        padding: 0 !important;
+      }
+      .page-break { page-break-after: always; }
     }
     .print-only { display: none; }
   </style>
@@ -25,7 +35,7 @@
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
 
   <!-- Notification Toast -->
-  <div id="toastNotification" class="fixed bottom-5 right-5 bg-emerald-600 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl z-50 transition-all duration-300 opacity-0 pointer-events-none flex items-center space-x-2">
+  <div id="toastNotification" class="fixed bottom-5 right-5 bg-emerald-600 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl z-50 transition-all duration-300 opacity-0 pointer-events-none flex items-center space-x-2 no-print">
     <i class="fa-solid fa-circle-check text-base"></i>
     <span id="toastMessage">Audit changes saved and synced successfully!</span>
   </div>
@@ -49,6 +59,10 @@
         </span>
       </div>
       <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
+        <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md border border-slate-700 transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-print text-indigo-400"></i>
+          <span>Print / Save PDF</span>
+        </button>
         <button onclick="submitAudit()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
           <i class="fa-solid fa-cloud-arrow-up"></i>
           <span>Save / Submit Audit</span>
@@ -59,7 +73,7 @@
         </button>
         <button onclick="exportConsolidatedExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
           <i class="fa-solid fa-file-excel"></i>
-          <span>Export Master Excel (.xlsx)</span>
+          <span>Export Excel (.xlsx)</span>
         </button>
       </div>
     </div>
@@ -73,12 +87,12 @@
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
           <i class="fa-solid fa-clipboard-list text-indigo-600"></i>
-          <span>Audit Metadata & Active Department Selection</span>
+          <span>Audit Metadata & Department Selection</span>
         </h2>
-        <span class="text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full">Inspection Setup</span>
+        <span class="text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full no-print">Inspection Setup</span>
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Select Active Department *</label>
           <select id="department" onchange="handleDepartmentChange(this.value)" class="w-full bg-amber-50 border border-amber-300 font-bold text-slate-900 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
@@ -94,7 +108,7 @@
             <option value="Laundry & Linen">Laundry & Linen</option>
             <option value="Hygiene & Food Safety">Hygiene & Food Safety</option>
           </select>
-          <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-info-circle"></i> Selecting a new department switches active entry view & saves progress.</p>
+          <p class="text-[10px] text-slate-500 mt-1 no-print"><i class="fa-solid fa-info-circle"></i> Selecting a department switches active view & saves progress.</p>
         </div>
 
         <div>
@@ -106,77 +120,15 @@
           <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Audit Date & Time</label>
           <input type="datetime-local" id="auditDate" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
         </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Overall Hotel Inspection Status</label>
-          <select id="overallStatus" onchange="syncMetaToCloud()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500">
-            <option value="Fully Compliant">🟢 Fully Compliant</option>
-            <option value="Minor Action Needed">🟡 Minor Action Needed</option>
-            <option value="Critical Attention Required">🔴 Critical Attention Required</option>
-          </select>
-        </div>
       </div>
     </div>
 
-    <!-- Master Summary Statistics Bar (Property-Wide) -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-500 uppercase">Total Items</p>
-          <p id="statTotal" class="text-2xl font-bold text-slate-800">0</p>
-        </div>
-        <div class="bg-slate-100 p-3 rounded-lg text-slate-600">
-          <i class="fa-solid fa-list-check text-xl"></i>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-500 uppercase">Passed / Compliant</p>
-          <p id="statPassed" class="text-2xl font-bold text-emerald-600">0</p>
-        </div>
-        <div class="bg-emerald-50 p-3 rounded-lg text-emerald-600">
-          <i class="fa-solid fa-circle-check text-xl"></i>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-500 uppercase">Action Needed</p>
-          <p id="statAction" class="text-2xl font-bold text-amber-600">0</p>
-        </div>
-        <div class="bg-amber-50 p-3 rounded-lg text-amber-600">
-          <i class="fa-solid fa-triangle-exclamation text-xl"></i>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <div>
-          <p class="text-xs font-semibold text-slate-500 uppercase">Rectified / Fixed</p>
-          <p id="statRectified" class="text-2xl font-bold text-blue-600">0</p>
-        </div>
-        <div class="bg-blue-50 p-3 rounded-lg text-blue-600">
-          <i class="fa-solid fa-wrench text-xl"></i>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between col-span-2 sm:col-span-1">
-        <div>
-          <p class="text-xs font-semibold text-slate-500 uppercase">Critical / Urgent</p>
-          <p id="statCritical" class="text-2xl font-bold text-rose-600">0</p>
-        </div>
-        <div class="bg-rose-50 p-3 rounded-lg text-rose-600">
-          <i class="fa-solid fa-radiation text-xl"></i>
-        </div>
-      </div>
-    </div>
-
-    <!-- Department Rectification Breakdown Table / Widget -->
+    <!-- Department Audit Breakdown Table -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
       <div class="flex items-center justify-between border-b border-slate-100 pb-2">
         <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
           <i class="fa-solid fa-chart-pie text-indigo-600"></i>
-          <span>Department-wise Rectification Breakdown</span>
+          <span>Department-wise Audit Breakdown</span>
         </h3>
         <span class="text-xs text-slate-500">Live Property Overview</span>
       </div>
@@ -186,11 +138,7 @@
           <thead>
             <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
               <th class="p-2.5">Department</th>
-              <th class="p-2.5 text-center">Total Inspected</th>
-              <th class="p-2.5 text-center">Pending Action</th>
-              <th class="p-2.5 text-center">Rectified Count</th>
-              <th class="p-2.5 text-center">Pass / Compliant</th>
-              <th class="p-2.5 text-right">Completion Rate</th>
+              <th class="p-2.5 text-right">Total Inspected</th>
             </tr>
           </thead>
           <tbody id="deptBreakdownBody" class="divide-y divide-slate-100 text-slate-600">
@@ -208,12 +156,12 @@
             <i class="fa-solid fa-camera text-indigo-600"></i>
             <span>Observations Log - <span id="activeDeptTitle" class="text-indigo-600">Housekeeping</span></span>
           </h2>
-          <p class="text-xs text-slate-500">Log defect items, record actions, and attach Before & After rectification photos.</p>
+          <p class="text-xs text-slate-500">Log defect items, record observations, and attach defect photos.</p>
         </div>
         <div class="flex items-center space-x-2">
           <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center space-x-1 no-print">
             <i class="fa-solid fa-print"></i>
-            <span>Print Preview</span>
+            <span>Print Preview / PDF</span>
           </button>
           <button onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs sm:text-sm px-4 py-2 rounded-lg shadow transition flex items-center space-x-1.5 no-print">
             <i class="fa-solid fa-plus"></i>
@@ -234,7 +182,7 @@
         </div>
         <h3 class="text-sm font-semibold text-slate-700">No Observation Records for <span id="emptyDeptName">Housekeeping</span></h3>
         <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Start by adding an observation item for this department.</p>
-        <button onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2 rounded-lg shadow transition inline-flex items-center space-x-1.5">
+        <button onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2 rounded-lg shadow transition inline-flex items-center space-x-1.5 no-print">
           <i class="fa-solid fa-plus"></i>
           <span>Add First Observation</span>
         </button>
@@ -244,7 +192,7 @@
   </main>
 
   <footer class="bg-slate-900 text-slate-400 text-xs py-4 text-center border-t border-slate-800 mt-auto no-print">
-    <p>Hotel Condition Audit Tool &bull; Multi-Department Consolidated Inspection & Excel Generator</p>
+    <p>Hotel Condition Audit Tool &bull; Multi-Department Inspection & Excel Generator</p>
   </footer>
 
   <!-- Firebase & Application Engine -->
@@ -319,7 +267,6 @@
             const data = snapshot.data();
             if (data.auditorName) document.getElementById('auditorName').value = data.auditorName;
             if (data.auditDate) document.getElementById('auditDate').value = data.auditDate;
-            if (data.overallStatus) document.getElementById('overallStatus').value = data.overallStatus;
             if (Array.isArray(data.masterObservations)) {
               masterObservations = data.masterObservations;
               renderActiveDepartmentView();
@@ -348,7 +295,6 @@
       const auditData = {
         auditorName: document.getElementById('auditorName').value,
         auditDate: document.getElementById('auditDate').value,
-        overallStatus: document.getElementById('overallStatus').value,
         masterObservations: masterObservations,
         lastUpdated: new Date().toISOString()
       };
@@ -371,7 +317,6 @@
       const data = {
         auditorName: document.getElementById('auditorName').value,
         auditDate: document.getElementById('auditDate').value,
-        overallStatus: document.getElementById('overallStatus').value,
         masterObservations: masterObservations
       };
       localStorage.setItem('hotel_master_audit_draft', JSON.stringify(data));
@@ -384,7 +329,6 @@
           const data = JSON.parse(saved);
           if (data.auditorName) document.getElementById('auditorName').value = data.auditorName;
           if (data.auditDate) document.getElementById('auditDate').value = data.auditDate;
-          if (data.overallStatus) document.getElementById('overallStatus').value = data.overallStatus;
           if (Array.isArray(data.masterObservations)) masterObservations = data.masterObservations;
         } catch (e) {
           console.error('Failed to parse local draft', e);
@@ -424,7 +368,6 @@
         
         let statusBg = "bg-amber-100 text-amber-800 border-amber-300";
         if (obs.status === 'Pass / Compliant') statusBg = "bg-emerald-100 text-emerald-800 border-emerald-300";
-        if (obs.status === 'Rectified / Fixed') statusBg = "bg-blue-100 text-blue-800 border-blue-300";
         if (obs.status === 'Critical Defect') statusBg = "bg-rose-100 text-rose-800 border-rose-300";
 
         card.innerHTML = `
@@ -435,7 +378,6 @@
               
               <select onchange="updateObservation(${masterIndex}, 'status', this.value)" class="border font-semibold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 ${statusBg}">
                 <option value="Action Required" ${obs.status === 'Action Required' ? 'selected' : ''}>🟡 Action Required</option>
-                <option value="Rectified / Fixed" ${obs.status === 'Rectified / Fixed' ? 'selected' : ''}>🔵 Rectified / Fixed</option>
                 <option value="Pass / Compliant" ${obs.status === 'Pass / Compliant' ? 'selected' : ''}>🟢 Pass / Compliant</option>
                 <option value="Critical Defect" ${obs.status === 'Critical Defect' ? 'selected' : ''}>🔴 Critical Defect</option>
                 <option value="Pending Review" ${obs.status === 'Pending Review' ? 'selected' : ''}>⚙️ Pending Review</option>
@@ -446,7 +388,7 @@
             </button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Specific Location / Item</label>
               <input type="text" value="${obs.location || ''}" onchange="updateObservation(${masterIndex}, 'location', this.value)" placeholder="e.g. Lobby Carpet / Room 204" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
@@ -473,69 +415,33 @@
                 <option value="Critical Hazard" ${obs.priority === 'Critical Hazard' ? 'selected' : ''}>Critical Hazard</option>
               </select>
             </div>
-
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Target Completion Date</label>
-              <input type="date" value="${obs.targetDate || ''}" onchange="updateObservation(${masterIndex}, 'targetDate', this.value)" class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">
-            </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Defect Observation / Notes</label>
-              <textarea rows="2" onchange="updateObservation(${masterIndex}, 'notes', this.value)" placeholder="Describe the physical condition or fault..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.notes || ''}</textarea>
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Action Plan & Rectification Details</label>
-              <textarea rows="2" onchange="updateObservation(${masterIndex}, 'actionPlan', this.value)" placeholder="Specify required corrective action or rectified notes..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.actionPlan || ''}</textarea>
-            </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Defect Observation / Notes</label>
+            <textarea rows="2" onchange="updateObservation(${masterIndex}, 'notes', this.value)" placeholder="Describe the physical condition or fault..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.notes || ''}</textarea>
           </div>
 
-          <!-- Dual Photo Upload Section -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-3 rounded-lg border border-slate-200">
-            <!-- Before Photo Slot -->
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-xs font-bold text-rose-700 uppercase flex items-center space-x-1">
-                  <i class="fa-solid fa-triangle-exclamation"></i>
-                  <span>Before / Defect Photo</span>
-                </span>
-                ${obs.beforeImage ? `<button onclick="removeImage(${masterIndex}, 'beforeImage')" class="text-[10px] text-rose-600 underline">Delete Photo</button>` : ''}
-              </div>
-              ${obs.beforeImage ? `
-                <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-32 bg-slate-100 flex items-center justify-center">
-                  <img src="${obs.beforeImage}" class="object-cover h-full w-full">
-                </div>
-              ` : `
-                <label class="flex flex-col items-center justify-center h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-rose-50/30 transition">
-                  <i class="fa-solid fa-camera text-slate-400 text-lg mb-1"></i>
-                  <span class="text-[11px] text-slate-500 font-medium">Attach Defect Photo</span>
-                  <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${masterIndex}, 'beforeImage')" class="hidden">
-                </label>
-              `}
+          <!-- Single Defect Photo Slot -->
+          <div class="bg-white p-3 rounded-lg border border-slate-200">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-rose-700 uppercase flex items-center space-x-1">
+                <i class="fa-solid fa-camera"></i>
+                <span>Defect / Condition Photo</span>
+              </span>
+              ${obs.beforeImage ? `<button onclick="removeImage(${masterIndex}, 'beforeImage')" class="text-[10px] text-rose-600 underline no-print">Delete Photo</button>` : ''}
             </div>
-
-            <!-- After Photo Slot -->
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="text-xs font-bold text-blue-700 uppercase flex items-center space-x-1">
-                  <i class="fa-solid fa-circle-check"></i>
-                  <span>After / Rectified Photo</span>
-                </span>
-                ${obs.afterImage ? `<button onclick="removeImage(${masterIndex}, 'afterImage')" class="text-[10px] text-blue-600 underline">Delete Photo</button>` : ''}
+            ${obs.beforeImage ? `
+              <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-40 bg-slate-100 flex items-center justify-center">
+                <img src="${obs.beforeImage}" class="object-cover h-full w-full">
               </div>
-              ${obs.afterImage ? `
-                <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-32 bg-slate-100 flex items-center justify-center">
-                  <img src="${obs.afterImage}" class="object-cover h-full w-full">
-                </div>
-              ` : `
-                <label class="flex flex-col items-center justify-center h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-blue-50/30 transition">
-                  <i class="fa-solid fa-camera text-slate-400 text-lg mb-1"></i>
-                  <span class="text-[11px] text-slate-500 font-medium">Attach Rectified Photo</span>
-                  <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${masterIndex}, 'afterImage')" class="hidden">
-                </label>
-              `}
-            </div>
+            ` : `
+              <label class="flex flex-col items-center justify-center h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-rose-50/30 transition no-print">
+                <i class="fa-solid fa-camera text-slate-400 text-lg mb-1"></i>
+                <span class="text-[11px] text-slate-500 font-medium">Attach Defect Photo</span>
+                <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${masterIndex}, 'beforeImage')" class="hidden">
+              </label>
+            `}
           </div>
         `;
         container.appendChild(card);
@@ -552,11 +458,8 @@
         location: '',
         category: 'Cleanliness / Hygiene',
         priority: 'Medium / Follow-up',
-        targetDate: '',
         notes: '',
-        actionPlan: '',
-        beforeImage: null,
-        afterImage: null
+        beforeImage: null
       });
       renderActiveDepartmentView();
       syncToCloud();
@@ -574,9 +477,6 @@
       syncToCloud();
     }
 
-    // CLIENT-SIDE CANVAS IMAGE COMPRESSION:
-    // Downscales mobile photos to max 800px & 0.65 JPEG quality (~40KB - 70KB).
-    // Prevents hitting Firestore's strict 1 MB document write limit!
     function compressAndResizeImage(file, maxWidth, maxHeight, quality, callback) {
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -615,15 +515,8 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      // Downscale to max 800px and compress quality to 0.65
       compressAndResizeImage(file, 800, 800, 0.65, function(compressedBase64) {
         masterObservations[masterIndex][field] = compressedBase64;
-
-        if (field === 'afterImage') {
-          masterObservations[masterIndex].status = 'Rectified / Fixed';
-          showToast(`Rectified photo uploaded & compressed! Status updated to 'Rectified / Fixed' for ${masterObservations[masterIndex].department}.`);
-        }
-
         renderActiveDepartmentView();
         syncToCloud();
       });
@@ -631,26 +524,11 @@
 
     function removeImage(masterIndex, field) {
       masterObservations[masterIndex][field] = null;
-      if (field === 'afterImage' && masterObservations[masterIndex].status === 'Rectified / Fixed') {
-        masterObservations[masterIndex].status = 'Action Required';
-      }
       renderActiveDepartmentView();
       syncToCloud();
     }
 
     function updateMasterDashboardStats() {
-      const total = masterObservations.length;
-      const passed = masterObservations.filter(o => o.status === 'Pass / Compliant').length;
-      const rectified = masterObservations.filter(o => o.status === 'Rectified / Fixed' || (o.afterImage && o.status !== 'Action Required')).length;
-      const actionNeeded = masterObservations.filter(o => o.status === 'Action Required' || o.status === 'Pending Review').length;
-      const critical = masterObservations.filter(o => o.status === 'Critical Defect').length;
-
-      document.getElementById('statTotal').innerText = total;
-      document.getElementById('statPassed').innerText = passed;
-      document.getElementById('statAction').innerText = actionNeeded;
-      document.getElementById('statRectified').innerText = rectified;
-      document.getElementById('statCritical').innerText = critical;
-
       const tbody = document.getElementById('deptBreakdownBody');
       if (!tbody) return;
       tbody.innerHTML = '';
@@ -661,10 +539,6 @@
         if (deptItems.length > 0) {
           hasData = true;
           const dTotal = deptItems.length;
-          const dPending = deptItems.filter(o => o.status === 'Action Required' || o.status === 'Pending Review' || o.status === 'Critical Defect').length;
-          const dRectified = deptItems.filter(o => o.status === 'Rectified / Fixed' || o.afterImage).length;
-          const dPassed = deptItems.filter(o => o.status === 'Pass / Compliant').length;
-          const completionRate = Math.round(((dRectified + dPassed) / dTotal) * 100);
 
           const tr = document.createElement('tr');
           tr.className = dept === activeDepartment ? "bg-amber-50/70 font-medium" : "hover:bg-slate-50";
@@ -673,26 +547,14 @@
               <span>${dept}</span>
               ${dept === activeDepartment ? `<span class="bg-amber-200 text-amber-900 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold">Active</span>` : ''}
             </td>
-            <td class="p-2.5 text-center font-semibold text-slate-700">${dTotal}</td>
-            <td class="p-2.5 text-center">
-              ${dPending > 0 ? `<span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">${dPending}</span>` : `<span class="text-slate-400">0</span>`}
-            </td>
-            <td class="p-2.5 text-center">
-              ${dRectified > 0 ? `<span class="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full"><i class="fa-solid fa-wrench mr-1"></i>${dRectified}</span>` : `<span class="text-slate-400">0</span>`}
-            </td>
-            <td class="p-2.5 text-center">
-              ${dPassed > 0 ? `<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">${dPassed}</span>` : `<span class="text-slate-400">0</span>`}
-            </td>
-            <td class="p-2.5 text-right font-bold text-slate-800">
-              <span class="${completionRate === 100 ? 'text-emerald-600' : 'text-slate-700'}">${completionRate}%</span>
-            </td>
+            <td class="p-2.5 text-right font-semibold text-slate-700">${dTotal}</td>
           `;
           tbody.appendChild(tr);
         }
       });
 
       if (!hasData) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 italic">No observation records logged yet across departments.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-400 italic">No observation records logged yet across departments.</td></tr>`;
       }
     }
 
@@ -718,17 +580,12 @@
 
       const auditor = document.getElementById('auditorName').value || 'Unassigned';
       const auditDate = document.getElementById('auditDate').value;
-      const overallStatus = document.getElementById('overallStatus').value;
 
       const summarySheet = workbook.addWorksheet('Executive Summary');
       summarySheet.views = [{ showGridLines: true }];
 
       summarySheet.columns = [
         { width: 28 },
-        { width: 18 },
-        { width: 18 },
-        { width: 18 },
-        { width: 18 },
         { width: 18 }
       ];
 
@@ -737,35 +594,19 @@
 
       summarySheet.addRow(['Auditor Name:', auditor]);
       summarySheet.addRow(['Audit Date & Time:', auditDate]);
-      summarySheet.addRow(['Overall Hotel Status:', overallStatus]);
       summarySheet.addRow([]);
 
-      summarySheet.addRow(['PROPERTY-WIDE AUDIT METRICS', 'COUNT']).font = { bold: true, size: 12 };
-      summarySheet.addRow(['Total Observations Inspected', masterObservations.length]);
-      summarySheet.addRow(['Passed / Compliant Items', masterObservations.filter(o => o.status === 'Pass / Compliant').length]);
-      summarySheet.addRow(['Rectified / Resolved Items', masterObservations.filter(o => o.status === 'Rectified / Fixed' || o.afterImage).length]);
-      summarySheet.addRow(['Pending Action Items', masterObservations.filter(o => o.status === 'Action Required' || o.status === 'Pending Review').length]);
-      summarySheet.addRow(['Critical Urgent Hazards', masterObservations.filter(o => o.status === 'Critical Defect').length]);
-      summarySheet.addRow([]);
-
-      summarySheet.addRow(['DEPARTMENT RECTIFICATION BREAKDOWN']).font = { bold: true, size: 12 };
-      const tableHeaderRow = summarySheet.addRow(['Department', 'Total Inspected', 'Pending Action', 'Rectified Count', 'Pass Compliant', 'Completion %']);
+      summarySheet.addRow(['DEPARTMENT AUDIT BREAKDOWN']).font = { bold: true, size: 12 };
+      const tableHeaderRow = summarySheet.addRow(['Department', 'Total Inspected']);
       tableHeaderRow.font = { bold: true, color: { argb: 'FFFFFF' } };
       tableHeaderRow.eachCell(cell => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1E293B' } };
-        cell.alignment = { horizontal: 'center' };
       });
 
       ALL_DEPARTMENTS.forEach(dept => {
         const deptObs = masterObservations.filter(o => o.department === dept);
         if (deptObs.length > 0) {
-          const dTotal = deptObs.length;
-          const dPending = deptObs.filter(o => o.status === 'Action Required' || o.status === 'Pending Review' || o.status === 'Critical Defect').length;
-          const dRectified = deptObs.filter(o => o.status === 'Rectified / Fixed' || o.afterImage).length;
-          const dPassed = deptObs.filter(o => o.status === 'Pass / Compliant').length;
-          const completion = Math.round(((dRectified + dPassed) / dTotal) * 100);
-
-          summarySheet.addRow([dept, dTotal, dPending, dRectified, dPassed, `${completion}%`]);
+          summarySheet.addRow([dept, deptObs.length]);
         }
       });
 
@@ -779,11 +620,8 @@
         { header: 'Location / Item', key: 'location', width: 22 },
         { header: 'Category', key: 'category', width: 22 },
         { header: 'Priority', key: 'priority', width: 16 },
-        { header: 'Defect Observation / Notes', key: 'notes', width: 32 },
-        { header: 'Before (Defect) Photo', key: 'beforeImg', width: 24 },
-        { header: 'Action Plan & Rectification Details', key: 'actionPlan', width: 32 },
-        { header: 'After (Rectified) Photo', key: 'afterImg', width: 24 },
-        { header: 'Target Date', key: 'targetDate', width: 14 }
+        { header: 'Defect Observation / Notes', key: 'notes', width: 35 },
+        { header: 'Defect / Condition Photo', key: 'beforeImg', width: 28 }
       ];
 
       const logHeaderRow = logSheet.getRow(1);
@@ -804,10 +642,7 @@
           category: obs.category,
           priority: obs.priority,
           notes: obs.notes || '-',
-          beforeImg: '',
-          actionPlan: obs.actionPlan || '-',
-          afterImg: '',
-          targetDate: obs.targetDate || '-'
+          beforeImg: ''
         });
 
         row.height = 85;
@@ -818,24 +653,15 @@
             const imageId = workbook.addImage({ base64: obs.beforeImage, extension: 'jpeg' });
             logSheet.addImage(imageId, { tl: { col: 7, row: rowNum - 1 }, ext: { width: 120, height: 100 } });
           } catch (e) {
-            console.error('Error embedding before image', e);
-          }
-        }
-
-        if (obs.afterImage && obs.afterImage.startsWith('data:image')) {
-          try {
-            const imageId = workbook.addImage({ base64: obs.afterImage, extension: 'jpeg' });
-            logSheet.addImage(imageId, { tl: { col: 9, row: rowNum - 1 }, ext: { width: 120, height: 100 } });
-          } catch (e) {
-            console.error('Error embedding after image', e);
+            console.error('Error embedding image', e);
           }
         }
       }
 
-      const fileName = `Hotel_Master_Condition_Audit_${new Date().toISOString().slice(0,10)}.xlsx`;
+      const fileName = `Hotel_Condition_Audit_${new Date().toISOString().slice(0,10)}.xlsx`;
       const buffer = await workbook.xlsx.writeBuffer();
       saveAs(new Blob([buffer]), fileName);
-      showToast("Master Consolidated Excel report downloaded successfully!");
+      showToast("Excel report downloaded successfully!");
     }
 
     window.handleDepartmentChange = handleDepartmentChange;
