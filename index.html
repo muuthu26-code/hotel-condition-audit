@@ -255,7 +255,6 @@
     let db = null;
     let isFirebaseActive = false;
     
-    // Master data structure: Array containing all observations across ALL departments
     let masterObservations = [];
     let activeDepartment = "Housekeeping";
     const AUDIT_DOC_ID = "active_hotel_master_audit";
@@ -356,6 +355,7 @@
 
       try {
         await setDoc(doc(db, "audits", AUDIT_DOC_ID), auditData, { merge: true });
+        saveLocalDraft();
       } catch (e) {
         console.error("Cloud sync failed, saving locally", e);
         saveLocalDraft();
@@ -394,7 +394,6 @@
       updateMasterDashboardStats();
     }
 
-    // REQUIREMENT 3: Selecting a new department switches view cleanly & resets local parameters for new logs
     function handleDepartmentChange(newDept) {
       activeDepartment = newDept;
       document.getElementById('activeDeptTitle').innerText = activeDepartment;
@@ -409,7 +408,6 @@
       const emptyState = document.getElementById('emptyState');
       container.innerHTML = '';
 
-      // Filter observations for currently active department
       const deptObs = masterObservations.filter(obs => obs.department === activeDepartment);
 
       if (deptObs.length === 0) {
@@ -419,13 +417,11 @@
       }
 
       deptObs.forEach((obs, index) => {
-        // Find true index in master array
         const masterIndex = masterObservations.indexOf(obs);
 
         const card = document.createElement('div');
         card.className = "bg-slate-50 rounded-xl p-4 border border-slate-200 relative transition hover:border-indigo-300 space-y-3";
         
-        // Status Badge formatting
         let statusBg = "bg-amber-100 text-amber-800 border-amber-300";
         if (obs.status === 'Pass / Compliant') statusBg = "bg-emerald-100 text-emerald-800 border-emerald-300";
         if (obs.status === 'Rectified / Fixed') statusBg = "bg-blue-100 text-blue-800 border-blue-300";
@@ -437,7 +433,6 @@
               <span class="bg-slate-800 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">${index + 1}</span>
               <span class="text-xs font-bold uppercase text-slate-500 bg-slate-200 px-2 py-0.5 rounded">${obs.department}</span>
               
-              <!-- Status Select Box -->
               <select onchange="updateObservation(${masterIndex}, 'status', this.value)" class="border font-semibold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 ${statusBg}">
                 <option value="Action Required" ${obs.status === 'Action Required' ? 'selected' : ''}>🟡 Action Required</option>
                 <option value="Rectified / Fixed" ${obs.status === 'Rectified / Fixed' ? 'selected' : ''}>🔵 Rectified / Fixed</option>
@@ -579,25 +574,59 @@
       syncToCloud();
     }
 
-    // REQUIREMENT 1 FIX: Uploading an After/Rectified Photo automatically changes status to "Rectified / Fixed"
+    // CLIENT-SIDE CANVAS IMAGE COMPRESSION:
+    // Downscales mobile photos to max 800px & 0.65 JPEG quality (~40KB - 70KB).
+    // Prevents hitting Firestore's strict 1 MB document write limit!
+    function compressAndResizeImage(file, maxWidth, maxHeight, quality, callback) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          callback(compressedDataUrl);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
     function handleImageUpload(event, masterIndex, field) {
       const file = event.target.files[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        masterObservations[masterIndex][field] = e.target.result;
+      // Downscale to max 800px and compress quality to 0.65
+      compressAndResizeImage(file, 800, 800, 0.65, function(compressedBase64) {
+        masterObservations[masterIndex][field] = compressedBase64;
 
         if (field === 'afterImage') {
-          // Explicitly update status to Rectified / Fixed so dashboard shifts Action Needed -> Rectified Count!
           masterObservations[masterIndex].status = 'Rectified / Fixed';
-          showToast(`Rectified photo uploaded! Status updated to 'Rectified / Fixed' for ${masterObservations[masterIndex].department}.`);
+          showToast(`Rectified photo uploaded & compressed! Status updated to 'Rectified / Fixed' for ${masterObservations[masterIndex].department}.`);
         }
 
         renderActiveDepartmentView();
         syncToCloud();
-      };
-      reader.readAsDataURL(file);
+      });
     }
 
     function removeImage(masterIndex, field) {
@@ -609,7 +638,6 @@
       syncToCloud();
     }
 
-    // REQUIREMENT 2: Property-wide Dashboard Stats & Department Rectified Count Breakdown
     function updateMasterDashboardStats() {
       const total = masterObservations.length;
       const passed = masterObservations.filter(o => o.status === 'Pass / Compliant').length;
@@ -623,7 +651,6 @@
       document.getElementById('statRectified').innerText = rectified;
       document.getElementById('statCritical').innerText = critical;
 
-      // Render Department Breakdown Table (Req 2)
       const tbody = document.getElementById('deptBreakdownBody');
       if (!tbody) return;
       tbody.innerHTML = '';
@@ -679,7 +706,6 @@
       }
     }
 
-    // REQUIREMENT 4: Consolidated Excel Report featuring ALL departments & photos in a single document
     async function exportConsolidatedExcel() {
       if (masterObservations.length === 0) {
         alert('No audit observations recorded yet. Please add at least one observation before exporting.');
@@ -694,7 +720,6 @@
       const auditDate = document.getElementById('auditDate').value;
       const overallStatus = document.getElementById('overallStatus').value;
 
-      // SHEET 1: Executive Property Summary & Department Breakdown Table
       const summarySheet = workbook.addWorksheet('Executive Summary');
       summarySheet.views = [{ showGridLines: true }];
 
@@ -715,7 +740,6 @@
       summarySheet.addRow(['Overall Hotel Status:', overallStatus]);
       summarySheet.addRow([]);
 
-      // Property Metrics
       summarySheet.addRow(['PROPERTY-WIDE AUDIT METRICS', 'COUNT']).font = { bold: true, size: 12 };
       summarySheet.addRow(['Total Observations Inspected', masterObservations.length]);
       summarySheet.addRow(['Passed / Compliant Items', masterObservations.filter(o => o.status === 'Pass / Compliant').length]);
@@ -724,7 +748,6 @@
       summarySheet.addRow(['Critical Urgent Hazards', masterObservations.filter(o => o.status === 'Critical Defect').length]);
       summarySheet.addRow([]);
 
-      // Department Breakdown Table
       summarySheet.addRow(['DEPARTMENT RECTIFICATION BREAKDOWN']).font = { bold: true, size: 12 };
       const tableHeaderRow = summarySheet.addRow(['Department', 'Total Inspected', 'Pending Action', 'Rectified Count', 'Pass Compliant', 'Completion %']);
       tableHeaderRow.font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -746,7 +769,6 @@
         }
       });
 
-      // SHEET 2: Consolidated Multi-Department Audit Log (With Before & After Photos)
       const logSheet = workbook.addWorksheet('Master Audit Log (All Depts)');
       logSheet.views = [{ showGridLines: true }];
 
@@ -770,7 +792,6 @@
       logHeaderRow.height = 28;
       logHeaderRow.alignment = { vertical: 'middle', horizontal: 'center' };
 
-      // Populate row data & embed images
       for (let i = 0; i < masterObservations.length; i++) {
         const obs = masterObservations[i];
         const rowNum = i + 2;
@@ -792,7 +813,6 @@
         row.height = 85;
         row.alignment = { vertical: 'middle', wrapText: true };
 
-        // Embed Before Photo
         if (obs.beforeImage && obs.beforeImage.startsWith('data:image')) {
           try {
             const imageId = workbook.addImage({ base64: obs.beforeImage, extension: 'jpeg' });
@@ -802,7 +822,6 @@
           }
         }
 
-        // Embed After Photo
         if (obs.afterImage && obs.afterImage.startsWith('data:image')) {
           try {
             const imageId = workbook.addImage({ base64: obs.afterImage, extension: 'jpeg' });
@@ -819,7 +838,6 @@
       showToast("Master Consolidated Excel report downloaded successfully!");
     }
 
-    // Attach global window functions
     window.handleDepartmentChange = handleDepartmentChange;
     window.addObservationItem = addObservationItem;
     window.removeObservation = removeObservation;
