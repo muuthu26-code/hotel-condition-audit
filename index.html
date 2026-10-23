@@ -94,8 +94,9 @@
       
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Select Active Department *</label>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Filter View by Department *</label>
           <select id="department" onchange="handleDepartmentChange(this.value)" class="w-full bg-amber-50 border border-amber-300 font-bold text-slate-900 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="All Departments">All Departments (Show All)</option>
             <option value="Front Office">Front Office</option>
             <option value="Housekeeping" selected>Housekeeping</option>
             <option value="Food & Beverage Service">Food & Beverage Service</option>
@@ -108,7 +109,7 @@
             <option value="Laundry & Linen">Laundry & Linen</option>
             <option value="Hygiene & Food Safety">Hygiene & Food Safety</option>
           </select>
-          <p class="text-[10px] text-slate-500 mt-1 no-print"><i class="fa-solid fa-info-circle"></i> Selecting a department switches active view & saves progress.</p>
+          <p class="text-[10px] text-slate-500 mt-1 no-print"><i class="fa-solid fa-info-circle"></i> Switches active department filter view & auto-assigns new items.</p>
         </div>
 
         <div>
@@ -156,7 +157,7 @@
             <i class="fa-solid fa-camera text-indigo-600"></i>
             <span>Observations Log - <span id="activeDeptTitle" class="text-indigo-600">Housekeeping</span></span>
           </h2>
-          <p class="text-xs text-slate-500">Log defect items, record observations, and attach defect photos.</p>
+          <p class="text-xs text-slate-500">Log defect items, assign department, record observations, and attach defect photos.</p>
         </div>
         <div class="flex items-center space-x-2">
           <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center space-x-1 no-print">
@@ -352,7 +353,9 @@
       const emptyState = document.getElementById('emptyState');
       container.innerHTML = '';
 
-      const deptObs = masterObservations.filter(obs => obs.department === activeDepartment);
+      const deptObs = activeDepartment === 'All Departments' 
+        ? masterObservations 
+        : masterObservations.filter(obs => obs.department === activeDepartment);
 
       if (deptObs.length === 0) {
         emptyState.classList.remove('hidden');
@@ -370,12 +373,20 @@
         if (obs.status === 'Pass / Compliant') statusBg = "bg-emerald-100 text-emerald-800 border-emerald-300";
         if (obs.status === 'Critical Defect') statusBg = "bg-rose-100 text-rose-800 border-rose-300";
 
+        const deptOptions = ALL_DEPARTMENTS.map(d => 
+          `<option value="${d}" ${obs.department === d ? 'selected' : ''}>${d}</option>`
+        ).join('');
+
         card.innerHTML = `
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-200">
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
               <span class="bg-slate-800 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">${index + 1}</span>
-              <span class="text-xs font-bold uppercase text-slate-500 bg-slate-200 px-2 py-0.5 rounded">${obs.department}</span>
               
+              <!-- Editable Department Selector for this Observation Card -->
+              <select onchange="updateObservation(${masterIndex}, 'department', this.value)" class="bg-indigo-50 border border-indigo-300 text-indigo-900 font-bold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500">
+                ${deptOptions}
+              </select>
+
               <select onchange="updateObservation(${masterIndex}, 'status', this.value)" class="border font-semibold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 ${statusBg}">
                 <option value="Action Required" ${obs.status === 'Action Required' ? 'selected' : ''}>🟡 Action Required</option>
                 <option value="Pass / Compliant" ${obs.status === 'Pass / Compliant' ? 'selected' : ''}>🟢 Pass / Compliant</option>
@@ -451,9 +462,11 @@
     }
 
     function addObservationItem() {
+      // Default to currently selected department filter unless it's set to 'All Departments'
+      const defaultDept = activeDepartment === 'All Departments' ? 'Housekeeping' : activeDepartment;
       masterObservations.push({
         id: Date.now(),
-        department: activeDepartment,
+        department: defaultDept,
         status: 'Action Required',
         location: '',
         category: 'Cleanliness / Hygiene',
