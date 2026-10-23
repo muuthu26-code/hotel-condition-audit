@@ -474,23 +474,29 @@
             <textarea rows="2" onchange="updateObservation(${masterIndex}, 'notes', this.value)" placeholder="Describe the physical condition or fault..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.notes || ''}</textarea>
           </div>
 
-          <!-- Single Defect Photo Slot -->
+          <!-- Single Defect Photo Slot (Fixed 1:1 Square Frame) -->
           <div class="bg-white p-3 rounded-lg border border-slate-200">
-            <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center justify-between mb-2">
               <span class="text-xs font-bold text-rose-700 uppercase flex items-center space-x-1">
                 <i class="fa-solid fa-camera"></i>
                 <span>Defect / Condition Photo</span>
               </span>
-              ${obs.beforeImage ? `<button type="button" onclick="removeImage(${masterIndex}, 'beforeImage')" class="text-[10px] text-rose-600 underline no-print">Delete Photo</button>` : ''}
+              ${obs.beforeImage ? `<button type="button" onclick="removeImage(${masterIndex}, 'beforeImage')" class="text-[10px] text-rose-600 font-semibold underline hover:text-rose-800 no-print">Delete Photo</button>` : ''}
             </div>
+            
             ${obs.beforeImage ? `
-              <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-40 bg-slate-100 flex items-center justify-center">
-                <img src="${obs.beforeImage}" class="object-cover h-full w-full">
+              <!-- SQUARE IMAGE CONTAINER (250px x 250px) -->
+              <div class="relative group rounded-xl overflow-hidden border-2 border-slate-200 w-56 h-56 sm:w-64 sm:h-64 bg-slate-900 flex items-center justify-center shadow-inner">
+                <img src="${obs.beforeImage}" class="object-cover w-full h-full">
               </div>
             ` : `
-              <label class="flex flex-col items-center justify-center h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-rose-50/30 transition no-print">
-                <i class="fa-solid fa-camera text-slate-400 text-lg mb-1"></i>
-                <span class="text-[11px] text-slate-500 font-medium">Attach Defect Photo</span>
+              <!-- SQUARE ATTACH PHOTO DROPZONE (250px x 250px) -->
+              <label class="flex flex-col items-center justify-center w-56 h-56 sm:w-64 sm:h-64 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:bg-rose-50/40 hover:border-rose-300 transition">
+                <div class="bg-rose-50 p-3 rounded-full mb-2 text-rose-500">
+                  <i class="fa-solid fa-camera text-2xl"></i>
+                </div>
+                <span class="text-xs text-slate-700 font-bold">Attach Defect Photo</span>
+                <span class="text-[10px] text-slate-400 mt-1">(Square 1:1 Format)</span>
                 <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${masterIndex}, 'beforeImage')" class="hidden">
               </label>
             `}
@@ -548,31 +554,29 @@
       updateMasterDashboardStats();
     }
 
-    function compressAndResizeImage(file, maxWidth, maxHeight, quality, callback) {
+    // SQUARE IMAGE CROPPER & COMPRESSOR (1:1 Aspect Ratio)
+    function compressAndResizeImage(file, targetSize, quality, callback) {
       const reader = new FileReader();
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          let width = img.width;
-          let height = img.height;
+          const canvas = document.createElement('canvas');
+          canvas.width = targetSize;
+          canvas.height = targetSize;
+          const ctx = canvas.getContext('2d');
 
-          if (width > height) {
-            if (width > maxWidth) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            }
+          // Center-crop to 1:1 Square
+          let sourceX = 0;
+          let sourceY = 0;
+          let sourceSize = Math.min(img.width, img.height);
+
+          if (img.width > img.height) {
+            sourceX = Math.round((img.width - img.height) / 2);
           } else {
-            if (height > maxHeight) {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
-            }
+            sourceY = Math.round((img.height - img.width) / 2);
           }
 
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
+          ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, targetSize, targetSize);
 
           const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
           callback(compressedDataUrl);
@@ -586,7 +590,8 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      compressAndResizeImage(file, 800, 800, 0.65, function(compressedBase64) {
+      // Crop photo into 600x600 square with high visual clarity
+      compressAndResizeImage(file, 600, 0.70, function(compressedBase64) {
         masterObservations[masterIndex][field] = compressedBase64;
         renderActiveDepartmentView();
         syncToCloud();
@@ -727,7 +732,7 @@
         if (obs.beforeImage && obs.beforeImage.startsWith('data:image')) {
           try {
             const imageId = workbook.addImage({ base64: obs.beforeImage, extension: 'jpeg' });
-            logSheet.addImage(imageId, { tl: { col: 7, row: rowNum - 1 }, ext: { width: 120, height: 100 } });
+            logSheet.addImage(imageId, { tl: { col: 7, row: rowNum - 1 }, ext: { width: 100, height: 100 } });
           } catch (e) {
             console.error('Error embedding image', e);
           }
