@@ -32,12 +32,20 @@
     .print-only { display: none; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans pb-20">
 
   <!-- Notification Toast -->
-  <div id="toastNotification" class="fixed bottom-5 right-5 bg-emerald-600 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl z-50 transition-all duration-300 opacity-0 pointer-events-none flex items-center space-x-2 no-print">
+  <div id="toastNotification" class="fixed top-5 right-5 bg-indigo-600 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none flex items-center space-x-2 no-print">
     <i class="fa-solid fa-circle-check text-base"></i>
     <span id="toastMessage">Audit changes saved and synced successfully!</span>
+  </div>
+
+  <!-- Floating Add Observation Action Button (Bottom Right) -->
+  <div class="fixed bottom-6 right-6 z-50 no-print flex flex-col items-end space-y-2">
+    <button type="button" onclick="scrollToAndAddObservation()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-3 rounded-full shadow-2xl flex items-center space-x-2 transition-all transform active:scale-95 border-2 border-indigo-400/30">
+      <i class="fa-solid fa-plus text-base"></i>
+      <span class="text-xs sm:text-sm">Add Observation</span>
+    </button>
   </div>
 
   <!-- Navigation Bar -->
@@ -59,19 +67,19 @@
         </span>
       </div>
       <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
-        <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md border border-slate-700 transition flex items-center space-x-1.5">
+        <button type="button" onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md border border-slate-700 transition flex items-center space-x-1.5">
           <i class="fa-solid fa-print text-indigo-400"></i>
           <span>Print / Save PDF</span>
         </button>
-        <button onclick="submitAudit()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
+        <button type="button" onclick="submitAudit()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
           <i class="fa-solid fa-cloud-arrow-up"></i>
           <span>Save / Submit Audit</span>
         </button>
-        <button onclick="clearAllAudits()" class="bg-rose-900/40 hover:bg-rose-900/60 text-rose-300 text-xs text-nowrap px-3 py-2 rounded-md border border-rose-800/50 transition flex items-center space-x-1">
+        <button type="button" onclick="clearAllAudits()" class="bg-rose-900/40 hover:bg-rose-900/60 text-rose-300 text-xs text-nowrap px-3 py-2 rounded-md border border-rose-800/50 transition flex items-center space-x-1">
           <i class="fa-solid fa-trash-can"></i>
           <span>Reset All Data</span>
         </button>
-        <button onclick="exportConsolidatedExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
+        <button type="button" onclick="exportConsolidatedExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs text-nowrap px-3.5 py-2 rounded-md shadow transition flex items-center space-x-1.5">
           <i class="fa-solid fa-file-excel"></i>
           <span>Export Excel (.xlsx)</span>
         </button>
@@ -96,9 +104,9 @@
         <div>
           <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Filter View by Department *</label>
           <select id="department" onchange="handleDepartmentChange(this.value)" class="w-full bg-amber-50 border border-amber-300 font-bold text-slate-900 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <option value="All Departments">All Departments (Show All)</option>
+            <option value="All Departments" selected>All Departments (Show All)</option>
             <option value="Front Office">Front Office</option>
-            <option value="Housekeeping" selected>Housekeeping</option>
+            <option value="Housekeeping">Housekeeping</option>
             <option value="Food & Beverage Service">Food & Beverage Service</option>
             <option value="Kitchen / Culinary">Kitchen / Culinary</option>
             <option value="Engineering & Maintenance">Engineering & Maintenance</option>
@@ -109,7 +117,7 @@
             <option value="Laundry & Linen">Laundry & Linen</option>
             <option value="Hygiene & Food Safety">Hygiene & Food Safety</option>
           </select>
-          <p class="text-[10px] text-slate-500 mt-1 no-print"><i class="fa-solid fa-info-circle"></i> Switches active department filter view & auto-assigns new items.</p>
+          <p class="text-[10px] text-slate-500 mt-1 no-print"><i class="fa-solid fa-info-circle"></i> Filter view or click any row below to switch view.</p>
         </div>
 
         <div>
@@ -124,47 +132,47 @@
       </div>
     </div>
 
-    <!-- Department Audit Breakdown Table -->
+    <!-- Department Audit Breakdown Table (Interactive Clickable Rows) -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
       <div class="flex items-center justify-between border-b border-slate-100 pb-2">
         <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
           <i class="fa-solid fa-chart-pie text-indigo-600"></i>
           <span>Department-wise Audit Breakdown</span>
         </h3>
-        <span class="text-xs text-slate-500">Live Property Overview</span>
+        <span class="text-xs text-slate-500"><i class="fa-solid fa-hand-pointer text-indigo-500 mr-1"></i> Click any department row to view its audits</span>
       </div>
       
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs border-collapse">
           <thead>
             <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
-              <th class="p-2.5">Department</th>
-              <th class="p-2.5 text-right">Total Inspected</th>
+              <th class="p-2.5">Department Name</th>
+              <th class="p-2.5 text-right">Total Inspected Items</th>
             </tr>
           </thead>
           <tbody id="deptBreakdownBody" class="divide-y divide-slate-100 text-slate-600">
-            <!-- Dynamic Department Rows Generated Here -->
+            <!-- Dynamic Clickable Rows Generated Here -->
           </tbody>
         </table>
       </div>
     </div>
 
     <!-- Active Department Observations Log Section -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+    <div id="observationsLogSection" class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div>
           <h2 class="text-base font-bold text-slate-900 flex items-center space-x-2">
             <i class="fa-solid fa-camera text-indigo-600"></i>
-            <span>Observations Log - <span id="activeDeptTitle" class="text-indigo-600">Housekeeping</span></span>
+            <span>Observations Log - <span id="activeDeptTitle" class="text-indigo-600">All Departments</span></span>
           </h2>
-          <p class="text-xs text-slate-500">Log defect items, assign department, record observations, and attach defect photos.</p>
+          <p class="text-xs text-slate-500">Log defect items, record observations, and attach defect photos.</p>
         </div>
         <div class="flex items-center space-x-2">
-          <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center space-x-1 no-print">
+          <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center space-x-1 no-print">
             <i class="fa-solid fa-print"></i>
             <span>Print Preview / PDF</span>
           </button>
-          <button onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs sm:text-sm px-4 py-2 rounded-lg shadow transition flex items-center space-x-1.5 no-print">
+          <button type="button" onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs sm:text-sm px-4 py-2 rounded-lg shadow transition flex items-center space-x-1.5 no-print">
             <i class="fa-solid fa-plus"></i>
             <span>Add Observation</span>
           </button>
@@ -176,14 +184,22 @@
         <!-- Observations dynamically rendered here -->
       </div>
 
+      <!-- Bottom Add Observation Button for convenience in long lists -->
+      <div id="bottomAddBar" class="pt-2 flex justify-center no-print hidden">
+        <button type="button" onclick="addObservationItem()" class="bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 font-bold text-xs px-6 py-2.5 rounded-lg shadow-sm transition flex items-center space-x-2">
+          <i class="fa-solid fa-plus"></i>
+          <span>Add Another Observation Item</span>
+        </button>
+      </div>
+
       <!-- Empty State -->
       <div id="emptyState" class="text-center py-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
         <div class="bg-indigo-50 text-indigo-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
           <i class="fa-solid fa-folder-open text-xl"></i>
         </div>
-        <h3 class="text-sm font-semibold text-slate-700">No Observation Records for <span id="emptyDeptName">Housekeeping</span></h3>
+        <h3 class="text-sm font-semibold text-slate-700">No Observation Records found for <span id="emptyDeptName">All Departments</span></h3>
         <p class="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">Start by adding an observation item for this department.</p>
-        <button onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2 rounded-lg shadow transition inline-flex items-center space-x-1.5 no-print">
+        <button type="button" onclick="addObservationItem()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-4 py-2 rounded-lg shadow transition inline-flex items-center space-x-1.5 no-print">
           <i class="fa-solid fa-plus"></i>
           <span>Add First Observation</span>
         </button>
@@ -205,7 +221,7 @@
     let isFirebaseActive = false;
     
     let masterObservations = [];
-    let activeDepartment = "Housekeeping";
+    let activeDepartment = "All Departments";
     const AUDIT_DOC_ID = "active_hotel_master_audit";
 
     const ALL_DEPARTMENTS = [
@@ -230,6 +246,14 @@
       messagingSenderId: "392033902726",
       appId: "1:392033902726:web:1f7b78f1208bb8fca1b107"
     };
+
+    // PREVENT ACCIDENTAL TAB CLOSING / AUDIT LOSS
+    window.addEventListener('beforeunload', (e) => {
+      if (masterObservations.length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
 
     window.addEventListener('DOMContentLoaded', () => {
       const now = new Date();
@@ -266,8 +290,12 @@
         onSnapshot(doc(db, "audits", AUDIT_DOC_ID), (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
-            if (data.auditorName) document.getElementById('auditorName').value = data.auditorName;
-            if (data.auditDate) document.getElementById('auditDate').value = data.auditDate;
+            if (data.auditorName && document.activeElement !== document.getElementById('auditorName')) {
+              document.getElementById('auditorName').value = data.auditorName;
+            }
+            if (data.auditDate && document.activeElement !== document.getElementById('auditDate')) {
+              document.getElementById('auditDate').value = data.auditDate;
+            }
             if (Array.isArray(data.masterObservations)) {
               masterObservations = data.masterObservations;
               renderActiveDepartmentView();
@@ -339,18 +367,25 @@
       updateMasterDashboardStats();
     }
 
-    function handleDepartmentChange(newDept) {
+    function handleDepartmentChange(newDept, scrollIntoView = false) {
       activeDepartment = newDept;
+      document.getElementById('department').value = activeDepartment;
       document.getElementById('activeDeptTitle').innerText = activeDepartment;
       document.getElementById('emptyDeptName').innerText = activeDepartment;
       
       renderActiveDepartmentView();
-      showToast(`Switched view to ${activeDepartment}. Ready for logs.`);
+      updateMasterDashboardStats();
+      showToast(`Switched view to ${activeDepartment}`);
+
+      if (scrollIntoView) {
+        document.getElementById('observationsLogSection').scrollIntoView({ behavior: 'smooth' });
+      }
     }
 
     function renderActiveDepartmentView() {
       const container = document.getElementById('observationsContainer');
       const emptyState = document.getElementById('emptyState');
+      const bottomAddBar = document.getElementById('bottomAddBar');
       container.innerHTML = '';
 
       const deptObs = activeDepartment === 'All Departments' 
@@ -359,14 +394,17 @@
 
       if (deptObs.length === 0) {
         emptyState.classList.remove('hidden');
+        if (bottomAddBar) bottomAddBar.classList.add('hidden');
       } else {
         emptyState.classList.add('hidden');
+        if (bottomAddBar) bottomAddBar.classList.remove('hidden');
       }
 
       deptObs.forEach((obs, index) => {
         const masterIndex = masterObservations.indexOf(obs);
 
         const card = document.createElement('div');
+        card.id = `obs-card-${obs.id}`;
         card.className = "bg-slate-50 rounded-xl p-4 border border-slate-200 relative transition hover:border-indigo-300 space-y-3";
         
         let statusBg = "bg-amber-100 text-amber-800 border-amber-300";
@@ -379,22 +417,25 @@
 
         card.innerHTML = `
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-200">
-            <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-              <span class="bg-slate-800 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">${index + 1}</span>
+            <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+              <span class="bg-slate-800 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0">${index + 1}</span>
               
-              <!-- Editable Department Selector for this Observation Card -->
-              <select onchange="updateObservation(${masterIndex}, 'department', this.value)" class="bg-indigo-50 border border-indigo-300 text-indigo-900 font-bold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500">
-                ${deptOptions}
-              </select>
+              <div class="flex items-center space-x-1.5">
+                <label class="text-[10px] font-bold uppercase text-slate-400">Dept:</label>
+                <!-- Editable Department Selector for this Card -->
+                <select onchange="changeCardDepartment(${masterIndex}, this.value)" class="bg-indigo-50 border border-indigo-300 text-indigo-900 font-bold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                  ${deptOptions}
+                </select>
+              </div>
 
-              <select onchange="updateObservation(${masterIndex}, 'status', this.value)" class="border font-semibold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 ${statusBg}">
+              <select onchange="updateObservation(${masterIndex}, 'status', this.value)" class="border font-semibold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 ${statusBg} cursor-pointer">
                 <option value="Action Required" ${obs.status === 'Action Required' ? 'selected' : ''}>🟡 Action Required</option>
                 <option value="Pass / Compliant" ${obs.status === 'Pass / Compliant' ? 'selected' : ''}>🟢 Pass / Compliant</option>
                 <option value="Critical Defect" ${obs.status === 'Critical Defect' ? 'selected' : ''}>🔴 Critical Defect</option>
                 <option value="Pending Review" ${obs.status === 'Pending Review' ? 'selected' : ''}>⚙️ Pending Review</option>
               </select>
             </div>
-            <button onclick="removeObservation(${masterIndex})" class="text-slate-400 hover:text-rose-600 transition self-end md:self-auto text-xs px-2 py-1 rounded no-print">
+            <button type="button" onclick="removeObservation(${masterIndex})" class="text-slate-400 hover:text-rose-600 transition self-end md:self-auto text-xs px-2 py-1 rounded no-print">
               <i class="fa-solid fa-trash-can"></i> Remove Item
             </button>
           </div>
@@ -440,7 +481,7 @@
                 <i class="fa-solid fa-camera"></i>
                 <span>Defect / Condition Photo</span>
               </span>
-              ${obs.beforeImage ? `<button onclick="removeImage(${masterIndex}, 'beforeImage')" class="text-[10px] text-rose-600 underline no-print">Delete Photo</button>` : ''}
+              ${obs.beforeImage ? `<button type="button" onclick="removeImage(${masterIndex}, 'beforeImage')" class="text-[10px] text-rose-600 underline no-print">Delete Photo</button>` : ''}
             </div>
             ${obs.beforeImage ? `
               <div class="relative group rounded-lg overflow-hidden border border-slate-200 h-40 bg-slate-100 flex items-center justify-center">
@@ -461,10 +502,26 @@
       updateMasterDashboardStats();
     }
 
+    function changeCardDepartment(masterIndex, newDept) {
+      masterObservations[masterIndex].department = newDept;
+      showToast(`Item re-assigned to ${newDept}`);
+      renderActiveDepartmentView();
+      syncToCloud();
+    }
+
+    function scrollToAndAddObservation() {
+      addObservationItem();
+      setTimeout(() => {
+        const container = document.getElementById('observationsContainer');
+        if (container && container.lastElementChild) {
+          container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+
     function addObservationItem() {
-      // Default to currently selected department filter unless it's set to 'All Departments'
       const defaultDept = activeDepartment === 'All Departments' ? 'Housekeeping' : activeDepartment;
-      masterObservations.push({
+      const newItem = {
         id: Date.now(),
         department: defaultDept,
         status: 'Action Required',
@@ -473,7 +530,8 @@
         priority: 'Medium / Follow-up',
         notes: '',
         beforeImage: null
-      });
+      };
+      masterObservations.push(newItem);
       renderActiveDepartmentView();
       syncToCloud();
     }
@@ -486,8 +544,8 @@
 
     function updateObservation(masterIndex, field, value) {
       masterObservations[masterIndex][field] = value;
-      renderActiveDepartmentView();
       syncToCloud();
+      updateMasterDashboardStats();
     }
 
     function compressAndResizeImage(file, maxWidth, maxHeight, quality, callback) {
@@ -554,20 +612,25 @@
           const dTotal = deptItems.length;
 
           const tr = document.createElement('tr');
-          tr.className = dept === activeDepartment ? "bg-amber-50/70 font-medium" : "hover:bg-slate-50";
+          const isActive = (dept === activeDepartment);
+          tr.className = `cursor-pointer transition hover:bg-indigo-50/80 ${isActive ? 'bg-indigo-100/70 font-bold border-l-4 border-indigo-600' : 'hover:bg-slate-50'}`;
+          tr.onclick = () => handleDepartmentChange(dept, true);
+
           tr.innerHTML = `
-            <td class="p-2.5 font-bold text-slate-800 flex items-center space-x-1.5">
-              <span>${dept}</span>
-              ${dept === activeDepartment ? `<span class="bg-amber-200 text-amber-900 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold">Active</span>` : ''}
+            <td class="p-2.5 text-slate-800 flex items-center space-x-2">
+              <span class="font-bold">${dept}</span>
+              ${isActive ? `<span class="bg-indigo-600 text-white text-[9px] px-2 py-0.5 rounded-full uppercase font-bold">Viewing</span>` : `<span class="text-[10px] text-indigo-600 underline font-medium">Click to filter</span>`}
             </td>
-            <td class="p-2.5 text-right font-semibold text-slate-700">${dTotal}</td>
+            <td class="p-2.5 text-right font-extrabold text-slate-800">
+              <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs">${dTotal} ${dTotal === 1 ? 'item' : 'items'}</span>
+            </td>
           `;
           tbody.appendChild(tr);
         }
       });
 
       if (!hasData) {
-        tbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-400 italic">No observation records logged yet across departments.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-400 italic">No observation records logged yet across departments. Click "Add Observation" below to begin.</td></tr>`;
       }
     }
 
@@ -679,6 +742,8 @@
 
     window.handleDepartmentChange = handleDepartmentChange;
     window.addObservationItem = addObservationItem;
+    window.scrollToAndAddObservation = scrollToAndAddObservation;
+    window.changeCardDepartment = changeCardDepartment;
     window.removeObservation = removeObservation;
     window.updateObservation = updateObservation;
     window.handleImageUpload = handleImageUpload;
