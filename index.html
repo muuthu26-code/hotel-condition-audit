@@ -165,7 +165,7 @@
             <i class="fa-solid fa-camera text-indigo-600"></i>
             <span>Observations Log - <span id="activeDeptTitle" class="text-indigo-600">All Departments</span></span>
           </h2>
-          <p class="text-xs text-slate-500">Log defect items, record observations, and attach defect photos.</p>
+          <p class="text-xs text-slate-500">Log defect items, record observations, and attach defect photos (up to 9 photos per observation).</p>
         </div>
         <div class="flex items-center space-x-2">
           <button type="button" onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center space-x-1 no-print">
@@ -223,6 +223,7 @@
     let masterObservations = [];
     let activeDepartment = "All Departments";
     const AUDIT_DOC_ID = "active_hotel_master_audit";
+    const MAX_PHOTOS_PER_OBSERVATION = 9;
 
     const ALL_DEPARTMENTS = [
       "Front Office",
@@ -297,7 +298,13 @@
               document.getElementById('auditDate').value = data.auditDate;
             }
             if (Array.isArray(data.masterObservations)) {
-              masterObservations = data.masterObservations;
+              masterObservations = data.masterObservations.map(obs => {
+                // Ensure obs.images is an array (backward compatibility with beforeImage)
+                if (!Array.isArray(obs.images)) {
+                  obs.images = obs.beforeImage ? [obs.beforeImage] : [];
+                }
+                return obs;
+              });
               renderActiveDepartmentView();
               updateMasterDashboardStats();
             }
@@ -358,7 +365,14 @@
           const data = JSON.parse(saved);
           if (data.auditorName) document.getElementById('auditorName').value = data.auditorName;
           if (data.auditDate) document.getElementById('auditDate').value = data.auditDate;
-          if (Array.isArray(data.masterObservations)) masterObservations = data.masterObservations;
+          if (Array.isArray(data.masterObservations)) {
+            masterObservations = data.masterObservations.map(obs => {
+              if (!Array.isArray(obs.images)) {
+                obs.images = obs.beforeImage ? [obs.beforeImage] : [];
+              }
+              return obs;
+            });
+          }
         } catch (e) {
           console.error('Failed to parse local draft', e);
         }
@@ -403,6 +417,11 @@
       deptObs.forEach((obs, index) => {
         const masterIndex = masterObservations.indexOf(obs);
 
+        // Ensure obs.images exists
+        if (!Array.isArray(obs.images)) {
+          obs.images = obs.beforeImage ? [obs.beforeImage] : [];
+        }
+
         const card = document.createElement('div');
         card.id = `obs-card-${obs.id}`;
         card.className = "bg-slate-50 rounded-xl p-4 border border-slate-200 relative transition hover:border-indigo-300 space-y-3";
@@ -414,6 +433,38 @@
         const deptOptions = ALL_DEPARTMENTS.map(d => 
           `<option value="${d}" ${obs.department === d ? 'selected' : ''}>${d}</option>`
         ).join('');
+
+        // Generate Thumbnails HTML for Multiple Photos
+        let photosGridHtml = '';
+        obs.images.forEach((imgData, imgIdx) => {
+          photosGridHtml += `
+            <div class="relative group rounded-xl overflow-hidden border-2 border-slate-200 w-36 h-36 sm:w-40 sm:h-40 bg-slate-900 flex items-center justify-center shadow-md shrink-0">
+              <img src="${imgData}" class="object-cover w-full h-full">
+              <button type="button" onclick="removeSinglePhoto(${masterIndex}, ${imgIdx})" title="Delete Photo" class="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow transition no-print">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <span class="absolute bottom-1 left-1.5 bg-slate-900/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                ${imgIdx + 1}/${obs.images.length}
+              </span>
+            </div>
+          `;
+        });
+
+        // Add Photo Box / Upload Trigger (if under MAX limit)
+        const canAddMore = obs.images.length < MAX_PHOTOS_PER_OBSERVATION;
+        let addPhotoBoxHtml = '';
+        if (canAddMore) {
+          addPhotoBoxHtml = `
+            <label class="flex flex-col items-center justify-center w-36 h-36 sm:w-40 sm:h-40 bg-slate-50 border-2 border-dashed border-indigo-300 rounded-xl cursor-pointer hover:bg-indigo-50/50 hover:border-indigo-500 transition shrink-0 no-print">
+              <div class="bg-indigo-50 p-2.5 rounded-full mb-1 text-indigo-600">
+                <i class="fa-solid fa-camera text-xl"></i>
+              </div>
+              <span class="text-xs text-indigo-700 font-bold text-center px-1">Add Photo</span>
+              <span class="text-[10px] text-slate-400 mt-0.5">(${obs.images.length}/${MAX_PHOTOS_PER_OBSERVATION})</span>
+              <input type="file" accept="image/*" multiple capture="environment" onchange="handleMultipleImagesUpload(event, ${masterIndex})" class="hidden">
+            </label>
+          `;
+        }
 
         card.innerHTML = `
           <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-200">
@@ -474,32 +525,22 @@
             <textarea rows="2" onchange="updateObservation(${masterIndex}, 'notes', this.value)" placeholder="Describe the physical condition or fault..." class="w-full bg-white border border-slate-300 text-slate-800 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500">${obs.notes || ''}</textarea>
           </div>
 
-          <!-- Single Defect Photo Slot (Fixed 1:1 Square Frame) -->
-          <div class="bg-white p-3 rounded-lg border border-slate-200">
-            <div class="flex items-center justify-between mb-2">
-              <span class="text-xs font-bold text-rose-700 uppercase flex items-center space-x-1">
+          <!-- Multiple Defect Photos Section (Square 1:1 Thumbnails) -->
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-rose-700 uppercase flex items-center space-x-1.5">
                 <i class="fa-solid fa-camera"></i>
-                <span>Defect / Condition Photo</span>
+                <span>Defect / Condition Photos</span>
+                <span class="text-[10px] text-slate-500 font-medium lowercase">(${obs.images.length}/${MAX_PHOTOS_PER_OBSERVATION} photos attached)</span>
               </span>
-              ${obs.beforeImage ? `<button type="button" onclick="removeImage(${masterIndex}, 'beforeImage')" class="text-[10px] text-rose-600 font-semibold underline hover:text-rose-800 no-print">Delete Photo</button>` : ''}
+              ${obs.images.length > 0 ? `<button type="button" onclick="removeAllPhotos(${masterIndex})" class="text-[10px] text-rose-600 font-semibold underline hover:text-rose-800 no-print">Clear All Photos</button>` : ''}
             </div>
             
-            ${obs.beforeImage ? `
-              <!-- SQUARE IMAGE CONTAINER (250px x 250px) -->
-              <div class="relative group rounded-xl overflow-hidden border-2 border-slate-200 w-56 h-56 sm:w-64 sm:h-64 bg-slate-900 flex items-center justify-center shadow-inner">
-                <img src="${obs.beforeImage}" class="object-cover w-full h-full">
-              </div>
-            ` : `
-              <!-- SQUARE ATTACH PHOTO DROPZONE (250px x 250px) -->
-              <label class="flex flex-col items-center justify-center w-56 h-56 sm:w-64 sm:h-64 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:bg-rose-50/40 hover:border-rose-300 transition">
-                <div class="bg-rose-50 p-3 rounded-full mb-2 text-rose-500">
-                  <i class="fa-solid fa-camera text-2xl"></i>
-                </div>
-                <span class="text-xs text-slate-700 font-bold">Attach Defect Photo</span>
-                <span class="text-[10px] text-slate-400 mt-1">(Square 1:1 Format)</span>
-                <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event, ${masterIndex}, 'beforeImage')" class="hidden">
-              </label>
-            `}
+            <!-- Horizontal / Grid Wrap for Multiple Photos -->
+            <div class="flex flex-wrap items-center gap-3 pt-1">
+              ${photosGridHtml}
+              ${addPhotoBoxHtml}
+            </div>
           </div>
         `;
         container.appendChild(card);
@@ -535,7 +576,7 @@
         category: 'Cleanliness / Hygiene',
         priority: 'Medium / Follow-up',
         notes: '',
-        beforeImage: null
+        images: []
       };
       masterObservations.push(newItem);
       renderActiveDepartmentView();
@@ -555,53 +596,87 @@
     }
 
     // SQUARE IMAGE CROPPER & COMPRESSOR (1:1 Aspect Ratio)
-    function compressAndResizeImage(file, targetSize, quality, callback) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement('canvas');
-          canvas.width = targetSize;
-          canvas.height = targetSize;
-          const ctx = canvas.getContext('2d');
+    function compressAndResizeImage(file, targetSize, quality) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            canvas.width = targetSize;
+            canvas.height = targetSize;
+            const ctx = canvas.getContext('2d');
 
-          // Center-crop to 1:1 Square
-          let sourceX = 0;
-          let sourceY = 0;
-          let sourceSize = Math.min(img.width, img.height);
+            // Center-crop to 1:1 Square
+            let sourceX = 0;
+            let sourceY = 0;
+            let sourceSize = Math.min(img.width, img.height);
 
-          if (img.width > img.height) {
-            sourceX = Math.round((img.width - img.height) / 2);
-          } else {
-            sourceY = Math.round((img.height - img.width) / 2);
-          }
+            if (img.width > img.height) {
+              sourceX = Math.round((img.width - img.height) / 2);
+            } else {
+              sourceY = Math.round((img.height - img.width) / 2);
+            }
 
-          ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, targetSize, targetSize);
+            ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, targetSize, targetSize);
 
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-          callback(compressedDataUrl);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+            resolve(compressedDataUrl);
+          };
+          img.src = e.target.result;
         };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
-
-    function handleImageUpload(event, masterIndex, field) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      // Crop photo into 600x600 square with high visual clarity
-      compressAndResizeImage(file, 600, 0.70, function(compressedBase64) {
-        masterObservations[masterIndex][field] = compressedBase64;
-        renderActiveDepartmentView();
-        syncToCloud();
+        reader.readAsDataURL(file);
       });
     }
 
-    function removeImage(masterIndex, field) {
-      masterObservations[masterIndex][field] = null;
+    async function handleMultipleImagesUpload(event, masterIndex) {
+      const files = Array.from(event.target.files);
+      if (!files || files.length === 0) return;
+
+      if (!Array.isArray(masterObservations[masterIndex].images)) {
+        masterObservations[masterIndex].images = [];
+      }
+
+      const availableSlots = MAX_PHOTOS_PER_OBSERVATION - masterObservations[masterIndex].images.length;
+      if (availableSlots <= 0) {
+        alert(`Maximum limit of ${MAX_PHOTOS_PER_OBSERVATION} photos reached for this item.`);
+        return;
+      }
+
+      const filesToProcess = files.slice(0, availableSlots);
+
+      showToast(`Compressing ${filesToProcess.length} photo(s)...`);
+
+      for (const file of filesToProcess) {
+        try {
+          const compressedBase64 = await compressAndResizeImage(file, 600, 0.70);
+          masterObservations[masterIndex].images.push(compressedBase64);
+        } catch (err) {
+          console.error("Error processing photo:", err);
+        }
+      }
+
       renderActiveDepartmentView();
       syncToCloud();
+      showToast(`${filesToProcess.length} photo(s) added successfully!`);
+    }
+
+    function removeSinglePhoto(masterIndex, imgIndex) {
+      if (masterObservations[masterIndex] && Array.isArray(masterObservations[masterIndex].images)) {
+        masterObservations[masterIndex].images.splice(imgIndex, 1);
+        renderActiveDepartmentView();
+        syncToCloud();
+        showToast("Photo removed.");
+      }
+    }
+
+    function removeAllPhotos(masterIndex) {
+      if (confirm('Are you sure you want to remove all photos from this observation?')) {
+        masterObservations[masterIndex].images = [];
+        renderActiveDepartmentView();
+        syncToCloud();
+        showToast("All photos cleared for this item.");
+      }
     }
 
     function updateMasterDashboardStats() {
@@ -702,7 +777,7 @@
         { header: 'Category', key: 'category', width: 22 },
         { header: 'Priority', key: 'priority', width: 16 },
         { header: 'Defect Observation / Notes', key: 'notes', width: 35 },
-        { header: 'Defect / Condition Photo', key: 'beforeImg', width: 28 }
+        { header: 'Defect / Condition Photos', key: 'photos', width: 45 }
       ];
 
       const logHeaderRow = logSheet.getRow(1);
@@ -715,6 +790,8 @@
         const obs = masterObservations[i];
         const rowNum = i + 2;
 
+        const imgs = Array.isArray(obs.images) ? obs.images : (obs.beforeImage ? [obs.beforeImage] : []);
+
         const row = logSheet.addRow({
           idx: i + 1,
           dept: obs.department,
@@ -723,19 +800,27 @@
           category: obs.category,
           priority: obs.priority,
           notes: obs.notes || '-',
-          beforeImg: ''
+          photos: imgs.length > 0 ? `${imgs.length} photo(s)` : 'No photo'
         });
 
-        row.height = 85;
+        row.height = imgs.length > 0 ? 110 : 35;
         row.alignment = { vertical: 'middle', wrapText: true };
 
-        if (obs.beforeImage && obs.beforeImage.startsWith('data:image')) {
-          try {
-            const imageId = workbook.addImage({ base64: obs.beforeImage, extension: 'jpeg' });
-            logSheet.addImage(imageId, { tl: { col: 7, row: rowNum - 1 }, ext: { width: 100, height: 100 } });
-          } catch (e) {
-            console.error('Error embedding image', e);
-          }
+        // Embed all photos side-by-side in column 8
+        if (imgs.length > 0) {
+          imgs.slice(0, 4).forEach((imgBase64, photoIdx) => {
+            if (imgBase64 && imgBase64.startsWith('data:image')) {
+              try {
+                const imageId = workbook.addImage({ base64: imgBase64, extension: 'jpeg' });
+                logSheet.addImage(imageId, { 
+                  tl: { col: 7 + (photoIdx * 0.8), row: rowNum - 1 }, 
+                  ext: { width: 90, height: 90 } 
+                });
+              } catch (e) {
+                console.error('Error embedding image in Excel:', e);
+              }
+            }
+          });
         }
       }
 
@@ -751,8 +836,9 @@
     window.changeCardDepartment = changeCardDepartment;
     window.removeObservation = removeObservation;
     window.updateObservation = updateObservation;
-    window.handleImageUpload = handleImageUpload;
-    window.removeImage = removeImage;
+    window.handleMultipleImagesUpload = handleMultipleImagesUpload;
+    window.removeSinglePhoto = removeSinglePhoto;
+    window.removeAllPhotos = removeAllPhotos;
     window.clearAllAudits = clearAllAudits;
     window.exportConsolidatedExcel = exportConsolidatedExcel;
     window.submitAudit = submitAudit;
