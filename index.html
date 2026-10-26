@@ -473,8 +473,8 @@
           `;
         });
 
-        // OPTIMIZED SMART PHOTO ATTACHMENT BOX:
-        // Standard accept="image/*" multiple allows native mobile OS to present both "Take Photo" and "Photo Library" seamlessly!
+        // OPTIMIZED MEMORY-SAFE PHOTO ATTACHMENT BOX:
+        // Standard input without strict capture attribute prevents mobile browser webview crashes!
         const canAddMore = obs.images.length < MAX_PHOTOS_PER_OBSERVATION;
         let addPhotoBoxHtml = '';
         if (canAddMore) {
@@ -485,7 +485,7 @@
               </div>
               <span class="text-xs text-indigo-700 font-bold text-center px-1">Take / Attach Photo</span>
               <span class="text-[10px] text-slate-400 mt-0.5">(${obs.images.length}/${MAX_PHOTOS_PER_OBSERVATION} attached)</span>
-              <input type="file" accept="image/*" multiple onchange="handleMultipleImagesUpload(event, ${masterIndex})" class="hidden">
+              <input type="file" accept="image/jpeg,image/png,image/heic,image/heif,image/*" multiple onchange="handleMultipleImagesUpload(event, ${masterIndex})" class="hidden">
             </label>
           `;
         }
@@ -615,13 +615,15 @@
       updateMasterDashboardStats();
     }
 
-    // Square 1:1 Image Cropper and Compressor
-    function compressAndResizeImage(file, targetSize, quality) {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const img = new Image();
-          img.onload = function() {
+    // MEMORY-OPTIMIZED SQUARE 1:1 IMAGE COMPRESSOR
+    // Uses URL.createObjectURL instead of FileReader.readAsDataURL to prevent RAM spikes & black screens on mobile browsers!
+    function compressAndResizeImage(file, targetSize = 600, quality = 0.70) {
+      return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        
+        img.onload = function() {
+          try {
             const canvas = document.createElement('canvas');
             canvas.width = targetSize;
             canvas.height = targetSize;
@@ -640,11 +642,20 @@
             ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, targetSize, targetSize);
 
             const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+            URL.revokeObjectURL(objectUrl); // Release GPU RAM immediately!
             resolve(compressedDataUrl);
-          };
-          img.src = e.target.result;
+          } catch(err) {
+            URL.revokeObjectURL(objectUrl);
+            reject(err);
+          }
         };
-        reader.readAsDataURL(file);
+
+        img.onerror = function(err) {
+          URL.revokeObjectURL(objectUrl);
+          reject(err);
+        };
+
+        img.src = objectUrl;
       });
     }
 
@@ -664,7 +675,7 @@
 
       const filesToProcess = files.slice(0, availableSlots);
 
-      showToast(`Compressing ${filesToProcess.length} photo(s)...`);
+      showToast(`Processing ${filesToProcess.length} photo(s)...`);
 
       for (const file of filesToProcess) {
         try {
